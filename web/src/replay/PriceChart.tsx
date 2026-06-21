@@ -24,6 +24,10 @@ export function PriceChart() {
   let bi = 0;
   for (const [key, v] of Object.entries(b)) {
     if (typeof v !== "number") continue;
+    // this is the price-scale chart; skip profit-scale benchmarks (e.g. fish's
+    // bertrand_profit/monopoly_profit ~20–34) or they'd blow up the y-domain and
+    // crush the ~1–3 price series into an unreadable band.
+    if (key.endsWith("_profit")) continue;
     const sty = BENCH_STYLE[key];
     benchmarks.push({
       key,

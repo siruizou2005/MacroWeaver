@@ -157,7 +157,7 @@ export function WorldArena() {
                       <span style={{ flex: "none", color: "var(--muted)" }}>{r.mainPrefix}{fmt(r.main)} · {r.subLabel} {fmt(r.sub, 1)}</span>
                     </div>
                   ))}
-                  {(recMean != null || recIdx != null) && (
+                  {mech === "fish" && (recMean != null || recIdx != null) && (
                     <div style={{ borderTop: "1px dashed #d4e3d9", paddingTop: 5, display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
                       <span>mean ${fmt(recMean)}</span>
                       <span>idx {fmt(recIdx)}</span>
