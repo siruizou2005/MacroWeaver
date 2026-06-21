@@ -10,10 +10,29 @@ export function PriceChart() {
 
   const series = trace.series;
   const byAgent = series.by_agent_price || {};
+  // Plot every numeric benchmark the market emits — fish (monopoly/bertrand), econ
+  // (target_cpi), clob (fair value), and any future market — not just the two fish lines.
+  const BENCH_STYLE: Record<string, { label: (v: number) => string; color: string }> = {
+    monopoly: { label: (v) => `monopoly p^M = ${v.toFixed(2)}`, color: "var(--amber)" },
+    bertrand: { label: (v) => `Bertrand–Nash p^B = ${v.toFixed(2)}`, color: "#6b74a0" },
+    target_cpi: { label: (v) => `target CPI = ${v.toFixed(2)}`, color: "var(--amber)" },
+    "fair value": { label: (v) => `fair value = ${v.toFixed(2)}`, color: "#6b74a0" },
+  };
+  const BENCH_PALETTE = ["var(--amber)", "#6b74a0", "#2f7d6a", "#9a5a52"];
   const benchmarks: { key: string; label: string; value: number; color: string }[] = [];
   const b = trace.benchmarks || {};
-  if (typeof b.monopoly === "number") benchmarks.push({ key: "monopoly", label: `monopoly p^M = ${b.monopoly.toFixed(2)}`, value: b.monopoly, color: "var(--amber)" });
-  if (typeof b.bertrand === "number") benchmarks.push({ key: "bertrand", label: `Bertrand–Nash p^B = ${b.bertrand.toFixed(2)}`, value: b.bertrand, color: "#6b74a0" });
+  let bi = 0;
+  for (const [key, v] of Object.entries(b)) {
+    if (typeof v !== "number") continue;
+    const sty = BENCH_STYLE[key];
+    benchmarks.push({
+      key,
+      label: sty ? sty.label(v) : `${key} = ${v.toFixed(2)}`,
+      value: v,
+      color: sty ? sty.color : BENCH_PALETTE[bi % BENCH_PALETTE.length],
+    });
+    bi++;
+  }
 
   const chart = buildChart({ byAgent, mean: series.mean_price || [], benchmarks, round, T: trace.T });
 

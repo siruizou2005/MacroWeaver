@@ -45,10 +45,9 @@ function PresetCard({
 }
 
 export function Landing() {
-  const nav = useStore((s) => s.nav);
   const openPreset = useStore((s) => s.openPreset);
-  const backToPicker = useStore((s) => s.backToPicker);
-  const enterConsole = () => { backToPicker(); nav("console"); };
+  const enterConsole = useStore((s) => s.enterConsole);
+  const watchReplay = useStore((s) => s.watchReplay);
   return (
     <main>
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "96px 32px 64px", textAlign: "center" }}>
@@ -67,7 +66,7 @@ export function Landing() {
           <button onClick={enterConsole} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "#fff", background: "var(--green)", border: "none", padding: "15px 30px", borderRadius: 10, cursor: "pointer" }}>
             Open the console
           </button>
-          <button onClick={() => nav("replay")} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "var(--green-d)", background: "#fff", border: "1.5px solid var(--border)", padding: "15px 30px", borderRadius: 10, cursor: "pointer" }}>
+          <button onClick={watchReplay} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "var(--green-d)", background: "#fff", border: "1.5px solid var(--border)", padding: "15px 30px", borderRadius: 10, cursor: "pointer" }}>
             Watch a replay →
           </button>
         </div>

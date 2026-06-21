@@ -191,6 +191,7 @@ export interface MWState {
   nav: (s: Screen) => void;
   syncFromPath: () => void;
   backToPicker: () => void;
+  enterConsole: () => void;
   openPreset: (id: Mech | "blank") => void;
   selectNode: (n: string) => void;
   setView: (v: CanvasView) => void;
@@ -222,6 +223,7 @@ export interface MWState {
   collapse: () => void;
   armRun: () => void;
   viewReplay: () => void;
+  watchReplay: () => void;
   startRun: () => void;
   rerun: () => void;
   cancelRun: () => void;
@@ -346,6 +348,7 @@ export const useStore = create<MWState>((set, get) => ({
   // browser back/forward → reflect the URL into the screen state
   syncFromPath: () => {
     const screen = pathToScreen(location.pathname);
+    if (screen !== "replay") get().pause(); // leaving replay via Back must stop playback
     if (screen === "console") {
       const sub = consoleSubFromPath(location.pathname);
       if (sub?.kind === "builtin" && sub.id !== get().preset) {
@@ -373,11 +376,15 @@ export const useStore = create<MWState>((set, get) => ({
       const m = location.pathname.match(/^\/replay\/(.+)/);
       if (m) {
         const id = decodeURIComponent(m[1]);
-        if (id !== get().traceId) {
-          get().loadTrace(id);
-          return;
-        }
+        if (id !== get().traceId) get().loadTrace(id);
+        else set({ screen });
+        return;
       }
+      // bare /replay = new-run mode; clear the finished trace so the URL and the screen
+      // agree (a loaded trace lives at /replay/<id>). Don't disturb a live run's view.
+      if (!get().running) set({ screen, trace: null, traceId: null, liveTrace: null });
+      else set({ screen });
+      return;
     }
     set({ screen });
   },
@@ -388,6 +395,15 @@ export const useStore = create<MWState>((set, get) => ({
     const tab = get().libTab;
     pushPath("console", tab === "presets" ? null : tab);
     set({ preset: null, presetKind: null, running: false });
+  },
+
+  // enter the console from outside (landing / header). One history entry, and the URL
+  // (/console = Presets) is kept consistent with the active tab — unlike backToPicker(),
+  // which preserves whatever library tab you were last on.
+  enterConsole: () => {
+    get().pause();
+    pushPath("console");
+    set({ screen: "console", preset: null, presetKind: null, running: false, libTab: "presets" });
   },
 
   openPreset: (id) => {
@@ -656,7 +672,10 @@ export const useStore = create<MWState>((set, get) => ({
     get().refreshTemplates();
   },
 
-  openExpanded: (id) => set({ expanded: id, node: `cohort:${id}` }),
+  // the pipeline drawer lives in the World/arena canvas, so opening it must also switch
+  // there — otherwise the Roster/Engine views and the right-rail Inspector trigger it
+  // while it's unmounted and nothing visibly happens.
+  openExpanded: (id) => set({ expanded: id, node: `cohort:${id}`, view: "arena" }),
   collapse: () => set({ expanded: null }),
 
   // console "Run" → the replay page in NEW-RUN mode: an empty scaffold of the configured
@@ -673,6 +692,16 @@ export const useStore = create<MWState>((set, get) => ({
   viewReplay: () => {
     const s = get();
     if (!s.trace) get().loadTrace(goldenIdForMech(s.mech));
+  },
+
+  // landing / docs "Watch a replay" CTA: go to the replay screen showing a REAL trace
+  // (not the empty new-run scaffold). loadTrace navigates + pushes /replay/<id> itself,
+  // so this is a single history entry that lands on actual data.
+  watchReplay: () => {
+    const s = get();
+    get().pause();
+    if (s.trace) get().nav("replay");
+    else get().loadTrace(goldenIdForMech(s.mech));
   },
 
   startRun: () => {
@@ -702,13 +731,15 @@ export const useStore = create<MWState>((set, get) => ({
     const s = get();
     if (s.running) return;
     const cfg = s.trace?.config;
-    if (cfg && cfg.market) get().applyConfig(cfg);
+    // tag the replayed world as an unsaved/derived config (preset=null) instead of
+    // leaving it under whatever preset the editor happened to be on.
+    if (cfg && cfg.market) get().applyConfig(cfg, null);
     get().startRun();
   },
 
   cancelRun: () => {
     get().send({ type: "run.cancel", runId: get().runId });
-    set({ running: false });
+    set({ running: false, runId: null });
   },
 
   refreshTraces: () => {
@@ -739,11 +770,16 @@ export const useStore = create<MWState>((set, get) => ({
   },
 
   loadTrace: async (id) => {
-    const r = await fetch(`/api/traces/${id}`);
-    if (!r.ok) return;
-    const trace = (await r.json()) as Trace;
-    pushPath("replay", encodeURIComponent(id));
-    set({ traceId: id, trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
+    get().pause(); // never leave a playback timer running on the previous trace
+    try {
+      const r = await fetch(`/api/traces/${id}`);
+      if (!r.ok) return;
+      const trace = (await r.json()) as Trace;
+      pushPath("replay", encodeURIComponent(id));
+      set({ traceId: id, trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
+    } catch {
+      /* network/parse failure — keep the current view rather than crashing on an unhandled rejection */
+    }
   },
 
   play: () => {
@@ -782,6 +818,9 @@ export const useStore = create<MWState>((set, get) => ({
 }));
 
 function handleMessage(m: any, set: any, get: () => MWState) {
+  // The WebSocket is reused across runs. Drop stragglers from a previous/cancelled run so
+  // their buffered events can't splice onto — or prematurely end — the current run.
+  if (m.runId && m.type !== "run.started" && m.runId !== get().runId) return;
   switch (m.type) {
     case "hello":
       set({ presets: m.presets || [], traces: m.traces || [] });
@@ -794,7 +833,7 @@ function handleMessage(m: any, set: any, get: () => MWState) {
       if (get().running) set({ liveTrace: buildLiveTrace(get()) });
       break;
     case "run.done":
-      set({ running: false, liveTrace: null, metrics: m.metrics || {} });
+      set({ running: false, runId: null, liveTrace: null, metrics: m.metrics || {} });
       // refresh trace library then auto-open replay on the finished trace
       fetch("/api/traces")
         .then((r) => r.json())
@@ -803,7 +842,7 @@ function handleMessage(m: any, set: any, get: () => MWState) {
       get().loadTrace(m.traceId);
       break;
     case "run.error":
-      set({ running: false });
+      set({ running: false, runId: null });
       console.error("[run.error]", m.message);
       break;
     default:

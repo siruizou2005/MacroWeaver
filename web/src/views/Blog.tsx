@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
@@ -132,6 +132,9 @@ function PostView({ post, onBack }: { post: Post; onBack: () => void }) {
 
 export function Blog() {
   const [active, setActive] = useState<Post | null>(null);
+  // list↔post is local state (screen stays "blog"), so App's screen-scroll reset never
+  // fires — reset here so opening a post from low in the list doesn't land mid-page.
+  useEffect(() => { window.scrollTo(0, 0); }, [active]);
   if (active) return <PostView post={active} onBack={() => setActive(null)} />;
   return <PostList onOpen={setActive} />;
 }

@@ -82,11 +82,14 @@ export function RunBar() {
   const viewReplay = useStore((s) => s.viewReplay);
   const cancelRun = useStore((s) => s.cancelRun);
   const loadTrace = useStore((s) => s.loadTrace);
+  const cohortCount = useStore((s) => s.cohorts.length);
 
   // empty (no trace) + not streaming ⇒ new-run mode; a loaded trace ⇒ replay
   const newRun = !running && !traceId;
   // Run launches the configured world (new run) or re-runs the open trace (replay)
   const onRun = running ? cancelRun : newRun ? startRun : rerun;
+  // a new run needs at least one cohort; startRun() bails silently otherwise, so disable
+  const runDisabled = newRun && cohortCount === 0;
 
   const seg = (active: boolean, label: string, onClick: () => void) => (
     <span
@@ -129,8 +132,10 @@ export function RunBar() {
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         <SaveRun />
         <button
-          onClick={onRun}
-          style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "9px 20px", borderRadius: 9, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+          onClick={runDisabled ? undefined : onRun}
+          disabled={runDisabled}
+          title={runDisabled ? "Add at least one agent to run" : undefined}
+          style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "9px 20px", borderRadius: 9, cursor: runDisabled ? "not-allowed" : "pointer", opacity: runDisabled ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
         >
           {running ? "■ Stop" : newRun ? "▶ Run" : "↻ Re-run"}
         </button>

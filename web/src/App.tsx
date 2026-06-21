@@ -35,9 +35,9 @@ function Header() {
   const preset = useStore((s) => s.preset);
   const connected = useStore((s) => s.connected);
   const backToPicker = useStore((s) => s.backToPicker);
+  const enterConsole = useStore((s) => s.enterConsole);
   const libTab = useStore((s) => s.libTab);
   const inApp = screen === "console" || screen === "replay";
-  const enterConsole = () => { backToPicker(); nav("console"); };
 
   // Contextual single step back:
   //  - console home (picker) → Home (landing)

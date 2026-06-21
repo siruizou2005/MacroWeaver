@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStore, buildConfig } from "../store";
 import { loadDefaults, saveDefaults } from "../lib/defaults";
 import { PresetPicker } from "../console/PresetPicker";
@@ -141,10 +142,10 @@ function Toolbar() {
         <button
           onClick={running ? cancelRun : armRun}
           disabled={!running && noCohorts}
-          title={!running && noCohorts ? "Add at least one agent to run" : undefined}
+          title={!running && noCohorts ? "Add at least one agent to play" : undefined}
           style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "10px 20px", borderRadius: 9, cursor: !running && noCohorts ? "not-allowed" : "pointer", opacity: !running && noCohorts ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8 }}
         >
-          {running ? "■ Stop" : "▶ Run"}
+          {running ? "■ Stop" : "▶ Play"}
         </button>
       </div>
     </div>
@@ -152,11 +153,18 @@ function Toolbar() {
 }
 
 function ConfigPanel() {
-  const s = useStore();
+  // subscribe to only the slices buildConfig reads (shallow-compared) instead of the whole
+  // store, so the modal doesn't re-render + re-stringify on every unrelated state change.
+  const s = useStore(useShallow((st) => ({
+    mech: st.mech, seed: st.seed, rounds: st.rounds, runName: st.runName,
+    marketParams: st.marketParams, cohorts: st.cohorts, layers: st.layers,
+    shock: st.shock, granularity: st.granularity, reflectEvery: st.reflectEvery,
+    policyCfg: st.policyCfg,
+  })));
   const toggleConfigView = useStore((st) => st.toggleConfigView);
   const saveCurrentConfig = useStore((st) => st.saveCurrentConfig);
   const [status, setStatus] = useState<string | null>(null);
-  const cfg = buildConfig(s);
+  const cfg = buildConfig(s as any);
   const json = JSON.stringify(cfg, null, 2);
 
   const btn = (primary: boolean): CSSProperties => ({

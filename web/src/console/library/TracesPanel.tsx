@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "../../store";
 
 const serif = "'Spectral',serif";
@@ -6,6 +7,11 @@ const mono = "'Spline Sans Mono',monospace";
 export function TracesPanel() {
   const traces = useStore((s) => s.traces);
   const loadTrace = useStore((s) => s.loadTrace);
+  const refreshTraces = useStore((s) => s.refreshTraces);
+
+  // the trace list is otherwise only seeded by the WS `hello`; fetch on open so a cold
+  // load (before `hello` arrives) or an out-of-band change doesn't show a false "empty".
+  useEffect(() => { refreshTraces(); }, [refreshTraces]);
 
   return (
     <div>

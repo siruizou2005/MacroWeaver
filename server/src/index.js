@@ -27,6 +27,15 @@ if (fs.existsSync(WEB_DIST)) {
   app.get("*", (_req, res) => res.sendFile(path.join(WEB_DIST, "index.html")));
 }
 
+// Last-resort guards: a stray async error (e.g. a child-process pipe error) should be
+// logged, not allowed to take the whole BFF down and drop every connected client.
+process.on("uncaughtException", (err) => {
+  console.error("[macroweaver] uncaughtException:", err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("[macroweaver] unhandledRejection:", err);
+});
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 attachWebSocket(wss);

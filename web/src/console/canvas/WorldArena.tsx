@@ -36,6 +36,7 @@ export function WorldArena() {
   const liveRound = useStore((s) => s.liveRound);
   const liveAgents = useStore((s) => s.liveAgents);
   const liveSeries = useStore((s) => s.liveSeries);
+  const shock = useStore((s) => s.shock);
   const armRun = useStore((s) => s.armRun);
 
   const k = cohorts.length;
@@ -44,7 +45,10 @@ export function WorldArena() {
   const mkt = marketMeta(mech, marketParams);
 
   const infoOp = layers.info ? 0.95 : 0.22;
-  const newsOp = layers.news ? 0.95 : 0.16;
+  // The orange line is the (optional) Shock injection only — "news" has no separate
+  // channel: it's part of the observation / record → write-back flow already drawn.
+  const shockSel = node === "shock";
+  const shockOp = shock || shockSel ? 0.95 : 0.2;
 
   const placed = cohorts.map((co, i) => {
     const ang = ((-90 + (i * 360) / k) * Math.PI) / 180;
@@ -64,14 +68,20 @@ export function WorldArena() {
     const cid = id.replace(/_\d+$/, "");
     return cohorts.find((c) => c.id === cid)?.name || id;
   };
-  const recRows = Object.entries(liveAgents).map(([id, a]: [string, any]) => ({
-    name: cohortName(id),
-    price: a?.realized?.price ?? a?.action?.price,
-    profit: a?.realized?.profit,
-  }));
+  // The per-round record is market-shaped: fish settles price/profit, clob price/pnl,
+  // econ income/wealth — so read each market's own realized fields, not just fish's.
+  const recRows = Object.entries(liveAgents).map(([id, a]: [string, any]) => {
+    const r = a?.realized || {};
+    const act = a?.action || {};
+    if (mech === "econ") return { name: cohortName(id), mainPrefix: "inc ", main: r.income, subLabel: "w", sub: r.wealth };
+    if (mech === "clob") return { name: cohortName(id), mainPrefix: "$", main: r.price ?? act.price, subLabel: "pnl", sub: r.pnl };
+    return { name: cohortName(id), mainPrefix: "$", main: r.price ?? act.price, subLabel: "π", sub: r.profit };
+  });
   const recMean = last(liveSeries.cols.mean_price);
   const recIdx = last(liveSeries.cols.collusion_index);
-  const recHasData = liveRound > 0 && recRows.some((r) => r.price != null);
+  // gate on the live run itself (not a fish-only `price` field) so the panel shows for
+  // every market while running, and reverts to the static schema once the run is over.
+  const recHasData = running && liveRound > 0 && recRows.some((r) => r.main != null);
 
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", paddingTop: 58 }}>
@@ -89,11 +99,12 @@ export function WorldArena() {
                 <line key={"c" + i} x1="318" y1="262" x2={p.x} y2={p.y} stroke="#9aa79e" strokeWidth="1.6" />
               ))}
               {/* drawn after the radial lines, with a bg halo so the line doesn't cut through the text */}
-              <text x="318" y="411" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5f7794" opacity={infoOp} stroke="#fbfbfa" strokeWidth={4} paintOrder="stroke">Observation layer · price · macro · news</text>
+              <text x="318" y="411" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5f7794" opacity={infoOp} stroke="#fbfbfa" strokeWidth={4} paintOrder="stroke">Observation layer · price · macro</text>
               <text x="296" y="150" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">act ↓</text>
               <text x="340" y="150" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">observe ↑</text>
-              <path d="M600 70 L432 188" stroke="#bd7a2a" strokeWidth="1.4" strokeDasharray="4 5" fill="none" markerEnd="url(#mw-arn)" opacity={newsOp} />
-              <text x="606" y="60" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#bd7a2a" opacity={newsOp}>News / shock</text>
+              {/* orange channel: the optional Shock injection (click to configure) */}
+              <path onClick={() => selectNode("shock")} d="M600 70 L432 188" stroke="#bd7a2a" strokeWidth={shockSel ? 2.2 : 1.4} strokeDasharray="4 5" fill="none" markerEnd="url(#mw-arn)" opacity={shockOp} style={{ pointerEvents: "auto", cursor: "pointer" }} />
+              <text onClick={() => selectNode("shock")} x="606" y="60" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fontWeight={shockSel ? 700 : 400} fill="#bd7a2a" opacity={shockOp} style={{ pointerEvents: "auto", cursor: "pointer" }}>{shock ? `Shock · ${shock.kind} @r${shock.round}` : "Shock · optional"}</text>
               {/* lower lane: record → out to the recorder */}
               <line x1="420" y1="262" x2="556" y2="262" stroke="#7a8290" strokeWidth="1.6" markerEnd="url(#mw-ar)" />
               <text x="488" y="254" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">record →</text>
@@ -143,13 +154,15 @@ export function WorldArena() {
                   {recRows.map((r, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
                       <span style={{ color: "var(--green-d)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                      <span style={{ flex: "none", color: "var(--muted)" }}>${fmt(r.price)} · π {fmt(r.profit, 1)}</span>
+                      <span style={{ flex: "none", color: "var(--muted)" }}>{r.mainPrefix}{fmt(r.main)} · {r.subLabel} {fmt(r.sub, 1)}</span>
                     </div>
                   ))}
-                  <div style={{ borderTop: "1px dashed #d4e3d9", paddingTop: 5, display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
-                    <span>mean ${fmt(recMean)}</span>
-                    <span>idx {fmt(recIdx)}</span>
-                  </div>
+                  {(recMean != null || recIdx != null) && (
+                    <div style={{ borderTop: "1px dashed #d4e3d9", paddingTop: 5, display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
+                      <span>mean ${fmt(recMean)}</span>
+                      <span>idx {fmt(recIdx)}</span>
+                    </div>
+                  )}
                   <div style={{ color: "var(--green-d)", fontSize: 9, marginTop: 1 }}>↻ written back → next round</div>
                 </div>
               ) : (
@@ -225,7 +238,7 @@ export function WorldArena() {
           disabled={running || k === 0}
           style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "var(--green-d)", background: "var(--green-l)", border: "1px solid #d3e7db", padding: "7px 14px", borderRadius: 8, cursor: running || k === 0 ? "default" : "pointer", whiteSpace: "nowrap", opacity: running || k === 0 ? 0.6 : 1 }}
         >
-          {running ? "running…" : k === 0 ? "add an agent to run" : "▶ Run"}
+          {running ? "running…" : k === 0 ? "add an agent to play" : "▶ Play"}
         </button>
       </div>
     </div>

@@ -25,6 +25,7 @@ const markets = [
 
 export function Docs() {
   const nav = useStore((s) => s.nav);
+  const watchReplay = useStore((s) => s.watchReplay);
   return (
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "72px 32px 120px" }}>
       <div style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: ".18em", color: "var(--green)", textTransform: "uppercase", marginBottom: 22 }}>Documentation</div>
@@ -77,7 +78,7 @@ export function Docs() {
         <button onClick={() => nav("console")} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "#fff", background: "var(--green)", border: "none", padding: "14px 28px", borderRadius: 10, cursor: "pointer" }}>
           Open the console
         </button>
-        <button onClick={() => nav("replay")} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "var(--green-d)", background: "#fff", border: "1.5px solid var(--border)", padding: "14px 28px", borderRadius: 10, cursor: "pointer" }}>
+        <button onClick={watchReplay} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "var(--green-d)", background: "#fff", border: "1.5px solid var(--border)", padding: "14px 28px", borderRadius: 10, cursor: "pointer" }}>
           Watch a replay →
         </button>
       </div>

@@ -4,6 +4,30 @@ import { agentColor } from "../lib/chart";
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
 
+// Per-agent numeric stats to show, by market — the engine's `realized` shape differs per
+// market (fish: price/profit, clob: price/pnl, econ: income/wealth), so we can't assume
+// the fish fields exist or nothing renders for the other markets.
+function agentStats(a: any, market?: string): { label: string; value: any }[] {
+  const r = a.realized || {};
+  const act = a.action || {};
+  if (market === "econagent") {
+    return [
+      { label: "income", value: a.income ?? r.income },
+      { label: "wealth", value: a.wealth ?? r.wealth },
+    ];
+  }
+  if (market === "clob") {
+    return [
+      { label: "price", value: a.price ?? r.price ?? act.price },
+      { label: "P&L", value: a.pnl ?? r.pnl },
+    ];
+  }
+  return [
+    { label: "price", value: a.price ?? act.price },
+    { label: "profit", value: a.profit ?? r.profit },
+  ];
+}
+
 export function ThinkingCards() {
   const trace = useStore(viewTrace);
   const round = useStore(viewRound);
@@ -18,8 +42,7 @@ export function ThinkingCards() {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {agents.map((a, i) => {
           const color = agentColor(i);
-          const price = a.price ?? a.action?.price;
-          const profit = a.profit ?? a.realized?.profit;
+          const stats = agentStats(a, trace.market).filter((st) => st.value != null);
           return (
             <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 13, padding: 16, background: "#fcfdfc" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -29,20 +52,16 @@ export function ThinkingCards() {
                 </div>
                 {a.cost != null && <span style={{ fontSize: 11, color: "var(--muted)" }}>cost c={a.cost}</span>}
               </div>
-              <div style={{ display: "flex", gap: 18, marginBottom: 12 }}>
-                {price != null && (
-                  <div>
-                    <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>price</div>
-                    <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 500 }}>{Number(price).toFixed(2)}</div>
-                  </div>
-                )}
-                {profit != null && (
-                  <div>
-                    <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>profit</div>
-                    <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 500, color: "var(--green-d)" }}>{Number(profit).toFixed(2)}</div>
-                  </div>
-                )}
-              </div>
+              {stats.length > 0 && (
+                <div style={{ display: "flex", gap: 18, marginBottom: 12 }}>
+                  {stats.map((st, j) => (
+                    <div key={st.label}>
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>{st.label}</div>
+                      <div style={{ fontFamily: mono, fontSize: 18, fontWeight: 500, color: j === 0 ? undefined : "var(--green-d)" }}>{Number(st.value).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {a.reasoning && (
                 <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#3c423c", borderLeft: `2px solid ${color}`, paddingLeft: 12, fontStyle: "italic" }}>
                   "{a.reasoning}"

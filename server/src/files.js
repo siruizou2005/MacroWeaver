@@ -51,6 +51,11 @@ export function getPreset(id) {
 }
 
 // ---------- traces ----------
+// Metadata is cached by file path + mtime so listTraces() (called on every WS connect,
+// every GET /api/traces and after every run) doesn't re-parse multi-MB trace bodies it
+// already knows; a changed mtime invalidates the entry.
+const traceMetaCache = new Map(); // fullpath -> { mtimeMs, meta }
+
 export function listTraces() {
   const out = [];
   const scan = (dir, prefix = "") => {
@@ -62,12 +67,19 @@ export function listTraces() {
         scan(full, prefix + f + "/");
       } else if (f.endsWith(".trace.json")) {
         const id = prefix + f.replace(/\.trace\.json$/, "");
-        let meta = {};
-        try {
-          const t = JSON.parse(fs.readFileSync(full, "utf-8"));
-          meta = { run_name: t.run_name, market: t.market, T: t.T, benchmarks: t.benchmarks };
-        } catch {
-          /* ignore */
+        const cached = traceMetaCache.get(full);
+        let meta;
+        if (cached && cached.mtimeMs === st.mtimeMs) {
+          meta = cached.meta;
+        } else {
+          meta = {};
+          try {
+            const t = JSON.parse(fs.readFileSync(full, "utf-8"));
+            meta = { run_name: t.run_name, market: t.market, T: t.T, benchmarks: t.benchmarks };
+          } catch {
+            /* ignore */
+          }
+          traceMetaCache.set(full, { mtimeMs: st.mtimeMs, meta });
         }
         out.push({ id, mtime: st.mtimeMs, ...meta });
       }
@@ -99,12 +111,15 @@ export function saveTraceAs(srcId, name) {
   return id;
 }
 
-export function traceIdForRun(runName) {
-  return slug(runName);
+// A run's trace id/path includes its unique runId so concurrent runs that share a
+// run_name (the default `<mech>_console` for every client of a market) never write to
+// the same file and clobber each other's trace.
+export function traceIdForRun(runName, runId) {
+  return runId ? `${slug(runName)}__${slug(runId)}` : slug(runName);
 }
 
-export function tracePathForRun(runName) {
-  return path.join(TRACES_DIR, `${slug(runName)}.trace.json`);
+export function tracePathForRun(runName, runId) {
+  return path.join(TRACES_DIR, `${traceIdForRun(runName, runId)}.trace.json`);
 }
 
 // ---------- user configs ----------

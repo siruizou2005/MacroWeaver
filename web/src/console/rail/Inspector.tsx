@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import {
   getMarket, GRANULARITIES, MEMORY_KINDS, REFLECTION_KINDS, SHOCK_KINDS,
@@ -28,13 +28,27 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 function Num({ value, onChange, step, min }: { value: number; onChange: (n: number) => void; step?: number; min?: number }) {
+  // Hold the raw text locally so the field can be cleared or hold a partial number
+  // ("", "2.", "-") while typing; the store only sees finite values, and we re-sync the
+  // text from the canonical value whenever it changes from outside (preset load, clamp).
+  const [raw, setRaw] = useState(Number.isFinite(value) ? String(value) : "");
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setRaw(Number.isFinite(value) ? String(value) : "");
+  }, [value, focused]);
   return (
     <input
       type="number"
-      value={Number.isFinite(value) ? value : ""}
+      value={raw}
       step={step ?? "any"}
       min={min}
-      onChange={(e) => { const n = parseFloat(e.target.value); if (Number.isFinite(n)) onChange(n); }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setRaw(Number.isFinite(value) ? String(value) : ""); }}
+      onChange={(e) => {
+        setRaw(e.target.value);
+        const n = parseFloat(e.target.value);
+        if (Number.isFinite(n)) onChange(n);
+      }}
       style={inputStyle}
     />
   );

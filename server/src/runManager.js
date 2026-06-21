@@ -9,16 +9,24 @@ function send(ws, msg) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
+// Deliberately stop the current run: mark the child dead (so its remaining buffered
+// stdout lines aren't relayed into the next run), close its reader, and SIGTERM it.
+function killChild(ws) {
+  const child = ws._child;
+  if (!child) return;
+  child._dead = true;
+  try { child._rl?.close(); } catch { /* ignore */ }
+  try { child.kill("SIGTERM"); } catch { /* ignore */ }
+  ws._child = null;
+}
+
 // Spawn the Python engine `stream` subcommand and relay its NDJSON stdout 1:1 over the WS.
 function startRun(ws, config) {
-  if (ws._child) {
-    try { ws._child.kill("SIGTERM"); } catch { /* ignore */ }
-    ws._child = null;
-  }
+  killChild(ws);
   const runId = randomUUID().slice(0, 8);
   const runName = config?.run_name || "run";
-  const tracePath = tracePathForRun(runName);
-  const traceId = traceIdForRun(runName);
+  const tracePath = tracePathForRun(runName, runId);
+  const traceId = traceIdForRun(runName, runId);
 
   const child = spawn(
     PYTHON,
@@ -30,7 +38,12 @@ function startRun(ws, config) {
 
   send(ws, { type: "run.started", runId });
 
-  // feed the config to the engine over stdin
+  // feed the config to the engine over stdin. If the engine dies before draining stdin
+  // (bad config, import error) a large write surfaces EPIPE *asynchronously* — without
+  // this listener it becomes an uncaughtException that takes down the whole BFF.
+  child.stdin.on("error", (e) => {
+    send(ws, { type: "run.error", runId, message: `failed to write config: ${e.message}` });
+  });
   try {
     child.stdin.write(YAML.stringify(config));
     child.stdin.end();
@@ -39,8 +52,10 @@ function startRun(ws, config) {
   }
 
   const rl = readline.createInterface({ input: child.stdout });
+  child._rl = rl;
   let sawDone = false;
   rl.on("line", (line) => {
+    if (child._dead) return; // a superseded/cancelled run must not bleed into the next one
     line = line.trim();
     if (!line) return;
     let ev;
@@ -73,9 +88,12 @@ function startRun(ws, config) {
   child.on("error", (e) => {
     send(ws, { type: "run.error", runId, message: `spawn failed: ${e.message}` });
   });
-  child.on("close", (code) => {
-    ws._child = null;
-    if (!sawDone && code !== 0) {
+  child.on("close", (code, signal) => {
+    // only clear the pointer if it still refers to THIS child — a newer run may have
+    // already claimed ws._child, and nulling it would orphan that live process.
+    if (ws._child === child) ws._child = null;
+    // a deliberate SIGTERM (cancel / pre-empt) is not an error: signal is set, or _dead.
+    if (!sawDone && code !== 0 && !signal && !child._dead) {
       send(ws, { type: "run.error", runId, message: `engine exited with code ${code}` });
     }
   });
@@ -101,10 +119,7 @@ export function attachWebSocket(wss) {
           startRun(ws, msg.config);
           break;
         case "run.cancel":
-          if (ws._child) {
-            try { ws._child.kill("SIGTERM"); } catch { /* ignore */ }
-            ws._child = null;
-          }
+          killChild(ws);
           break;
         default:
           break;
@@ -112,10 +127,7 @@ export function attachWebSocket(wss) {
     });
 
     ws.on("close", () => {
-      if (ws._child) {
-        try { ws._child.kill("SIGTERM"); } catch { /* ignore */ }
-        ws._child = null;
-      }
+      killChild(ws);
     });
   });
 }

@@ -147,7 +147,7 @@ const ECON: MarketSpec = {
   reflectEvery: 3,
   defaultMemory: "pool",
   defaultReflection: "quarterly",
-  benchmarks: ["target_inflation"],
+  benchmarks: ["target_cpi"], // engine benchmarks() returns {"target_cpi": 100.0}
   params: [
     { key: "fiscal", label: "Fiscal (tax + transfer)", type: "bool", default: true },
     { key: "monetary", label: "Monetary (savings interest)", type: "bool", default: true },
