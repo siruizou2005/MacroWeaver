@@ -998,7 +998,16 @@ export const useStore = create<MWState>((set, get) => ({
 
   cancelRun: () => {
     get().send({ type: "run.cancel", runId: get().runId });
-    set({ running: false, runId: null });
+    // Stopping must not blank the view: while running the screen reads liveTrace, but
+    // viewTrace falls back to `trace` (null on a fresh run) once running flips off. Promote
+    // the partial live run into the loaded trace so the current state stays on screen and is
+    // scrubbable, instead of vanishing. If no round landed yet, just stop.
+    const lt = get().liveTrace;
+    if (lt && lt.T >= 1) {
+      set({ running: false, runId: null, trace: lt, traceId: null, liveTrace: null, round: lt.T - 1, playing: false });
+    } else {
+      set({ running: false, runId: null });
+    }
   },
 
   refreshTraces: () => {
