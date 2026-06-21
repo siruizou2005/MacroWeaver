@@ -12,12 +12,13 @@ const ACOLORS = [
 export function Roster() {
   const cohorts = useStore((s) => s.cohorts);
   const mech = useStore((s) => s.mech);
+  const marketParams = useStore((s) => s.marketParams);
   const node = useStore((s) => s.node);
   const selectNode = useStore((s) => s.selectNode);
   const openExpanded = useStore((s) => s.openExpanded);
   const addCohort = useStore((s) => s.addCohort);
   const removeCohort = useStore((s) => s.removeCohort);
-  const mkt = marketMeta(mech);
+  const mkt = marketMeta(mech, marketParams);
   const total = cohorts.reduce((m, c) => m + c.n, 0);
   const action = mech === "fish" ? "sets price" : mech === "econ" ? "work / consume" : "place / hold orders";
   const marketSel = node === "market";

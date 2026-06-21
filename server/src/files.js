@@ -100,7 +100,16 @@ export function listConfigs() {
   return fs
     .readdirSync(CONFIGS_DIR)
     .filter((f) => f.endsWith(".yaml"))
-    .map((f) => f.replace(/\.yaml$/, ""));
+    .map((f) => {
+      const id = f.replace(/\.yaml$/, "");
+      let cfg = {};
+      try {
+        cfg = YAML.parse(fs.readFileSync(path.join(CONFIGS_DIR, f), "utf-8")) || {};
+      } catch {
+        /* ignore malformed */
+      }
+      return { id, run_name: cfg.run_name || id, market: cfg.market?.type || "config", rounds: cfg.rounds || 0 };
+    });
 }
 
 export function getConfig(id) {

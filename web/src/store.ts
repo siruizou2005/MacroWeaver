@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type {
-  Benchmarks, Cohort, CanvasView, Mech, PresetMeta, Screen, Trace, TraceMeta,
+  Benchmarks, Cohort, CanvasView, Mech, PolicyCfg, PresetMeta, SavedConfigMeta,
+  Screen, ShockConfig, Trace, TraceMeta,
 } from "./types";
+import { defaultParams, getMarket } from "./console/marketFields";
 
 // ---- market <-> mech mapping ----
 const MECH_TO_TYPE: Record<Mech, string> = {
@@ -14,36 +16,8 @@ const TYPE_TO_MECH: Record<string, Mech> = {
   econagent: "econ",
   clob: "clob",
 };
-const DEFAULT_PARAMS: Record<Mech, Record<string, any>> = {
-  fish: { a: 2.0, mu: 0.25, a0: 0.0, cost: 1.0 },
-  econ: { tax: "progressive", production: true },
-  clob: { depth_k: 8 },
-};
-const DEFAULT_ROUNDS: Record<Mech, number> = { fish: 48, econ: 40, clob: 60 };
-const GRANULARITY: Record<Mech, string> = { fish: "round", econ: "quarter", clob: "session" };
 
-// ---- default cohort sets (used for "start from scratch" / fallback) ----
-export function cohortsFor(mech: Mech): Cohort[] {
-  if (mech === "econ")
-    return [
-      { id: "workers", name: "Workers", n: 40, persona: "wage-earning · consume monthly", memory: "pool", reflection: "quarterly" },
-      { id: "savers", name: "Savers", n: 30, persona: "precautionary · low spend", memory: "pool", reflection: "quarterly" },
-      { id: "spenders", name: "Spenders", n: 120, persona: "high marginal propensity", memory: "pool", reflection: "quarterly" },
-      { id: "gig", name: "Gig labor", n: 25, persona: "volatile income", memory: "pool", reflection: "quarterly" },
-      { id: "retirees", name: "Retirees", n: 18, persona: "fixed income · price-sensitive", memory: "pool", reflection: "quarterly" },
-      { id: "students", name: "Students", n: 12, persona: "credit-constrained", memory: "pool", reflection: "quarterly" },
-    ];
-  if (mech === "clob")
-    return [
-      { id: "fundamental", name: "Fundamentalists", n: 8, persona: "trade toward fair value", memory: "bdi", reflection: "bdi" },
-      { id: "momentum", name: "Momentum", n: 8, persona: "chase trends · herding bias", memory: "bdi", reflection: "bdi" },
-      { id: "noise", name: "Noise traders", n: 6, persona: "random liquidity", memory: "bdi", reflection: "bdi" },
-    ];
-  return [
-    { id: "incumbent", name: "Incumbent", n: 1, persona: "cautious · high margin", profile: { cost: 1.0 }, initial_state: { price: 1.5 } },
-    { id: "challenger", name: "Challenger", n: 1, persona: "aggressive · low cost", profile: { cost: 1.0 }, initial_state: { price: 1.45 } },
-  ];
-}
+const DEFAULT_POLICY: PolicyCfg = { model: "claude-opus-4-8", use_cache: true, max_concurrency: 5 };
 
 interface LiveSeries {
   round: number[];
@@ -82,10 +56,16 @@ interface MWState {
   mech: Mech;
   preset: string | null;
 
-  // world config
+  // world config — every field maps 1:1 onto the engine Config
   cohorts: Cohort[];
   marketParams: Record<string, any>;
   rounds: number;
+  seed: number;
+  runName: string;
+  granularity: string;
+  reflectEvery: number;
+  shock: ShockConfig | null;
+  policyCfg: PolicyCfg;
   expanded: string | null; // cohort id whose pipeline drawer is open
   layers: { info: boolean; institution: boolean; social: boolean; news: boolean };
 
@@ -93,6 +73,8 @@ interface MWState {
   connected: boolean;
   presets: PresetMeta[];
   traces: TraceMeta[];
+  savedConfigs: SavedConfigMeta[];
+  showConfig: boolean; // raw config (JSON) viewer open?
 
   // live run
   running: boolean;
@@ -127,6 +109,19 @@ interface MWState {
   removeCohort: (id: string) => void;
   updateCohort: (id: string, patch: Partial<Cohort>) => void;
   toggleLayer: (k: "info" | "institution" | "social" | "news") => void;
+  setMarketParam: (key: string, value: any) => void;
+  setRounds: (n: number) => void;
+  setSeed: (n: number) => void;
+  setRunName: (s: string) => void;
+  setGranularity: (g: string) => void;
+  setReflectEvery: (n: number) => void;
+  setShock: (patch: Partial<ShockConfig> | null) => void;
+  setPolicyCfg: (patch: Partial<PolicyCfg>) => void;
+  applyConfig: (cfg: any, preset?: string | null) => void;
+  toggleConfigView: () => void;
+  refreshConfigs: () => void;
+  saveCurrentConfig: (name?: string) => Promise<string | null>;
+  loadSavedConfig: (id: string) => Promise<void>;
   openExpanded: (id: string) => void;
   collapse: () => void;
   startRun: () => void;
@@ -139,37 +134,38 @@ interface MWState {
   scrub: (r: number) => void;
 }
 
-function buildConfig(s: MWState) {
+export function buildConfig(s: MWState) {
   const mech = s.mech;
+  const spec = getMarket(mech);
   return {
-    seed: 7,
+    seed: s.seed,
     rounds: s.rounds,
-    run_name: `${mech}_console`,
-    market: { type: MECH_TO_TYPE[mech], params: s.marketParams },
-    cohorts: s.cohorts.map((c, i) => ({
+    run_name: s.runName || `${mech}_console`,
+    market: { type: MECH_TO_TYPE[mech], params: { ...s.marketParams } },
+    cohorts: s.cohorts.map((c) => ({
       id: c.id,
       name: c.name,
       n: c.n,
       persona: c.persona,
       policy: c.policy || "deterministic",
-      profile: c.profile || (mech === "fish" ? { cost: 1.0 } : {}),
-      initial_state:
-        c.initial_state || (mech === "fish" ? { price: 1.5 - 0.05 * (i % 2) } : {}),
-      memory: c.memory || (mech === "fish" ? "notepad" : mech === "econ" ? "pool" : "bdi"),
-      reflection:
-        c.reflection || (mech === "fish" ? "insight" : mech === "econ" ? "quarterly" : "bdi"),
+      profile: c.profile || {},
+      initial_state: c.initial_state || {},
+      memory: c.memory || spec.defaultMemory,
+      reflection: c.reflection || spec.defaultReflection,
     })),
+    // Only `news` and `shock` are engine-functional; the rest are the visual
+    // world layers and are carried through faithfully but ignored by the engine.
     layers: {
-      observation: true,
-      institution_fiscal: s.layers.institution && mech === "econ",
-      institution_monetary: s.layers.institution && mech === "econ",
-      production: mech === "econ",
+      observation: s.layers.info,
+      institution_fiscal: false,
+      institution_monetary: false,
+      production: false,
       social: s.layers.social,
       news: s.layers.news,
-      shock: null,
+      shock: s.shock,
     },
-    scheduler: { granularity: GRANULARITY[mech], reflect_every: 4 },
-    policy: { model: "claude-opus-4-8", use_cache: true, max_concurrency: 4 },
+    scheduler: { granularity: s.granularity, reflect_every: Math.max(1, s.reflectEvery) },
+    policy: { ...s.policyCfg },
   };
 }
 
@@ -180,15 +176,23 @@ export const useStore = create<MWState>((set, get) => ({
   mech: "fish",
   preset: null,
 
-  cohorts: cohortsFor("fish"),
-  marketParams: { ...DEFAULT_PARAMS.fish },
-  rounds: 48,
+  cohorts: getMarket("fish").starterCohorts(),
+  marketParams: defaultParams("fish"),
+  rounds: getMarket("fish").defaultRounds,
+  seed: 7,
+  runName: "fish_console",
+  granularity: getMarket("fish").granularity,
+  reflectEvery: getMarket("fish").reflectEvery,
+  shock: null,
+  policyCfg: { ...DEFAULT_POLICY },
   expanded: null,
   layers: { info: true, institution: false, social: false, news: false },
 
   connected: false,
   presets: [],
   traces: [],
+  savedConfigs: [],
+  showConfig: false,
 
   running: false,
   runId: null,
@@ -243,10 +247,12 @@ export const useStore = create<MWState>((set, get) => ({
   },
 
   openPreset: (id) => {
-    const mech: Mech = id === "blank" ? "fish" : (id as Mech);
-    // try to load the shipped preset config so the console matches the golden trace
-    const presetFile = id === "blank" ? null : MECH_TO_TYPE[mech];
+    const blank = id === "blank";
+    const mech: Mech = blank ? "fish" : (id as Mech);
+    const spec = getMarket(mech);
     pushPath("console");
+    // scaffold a complete, engine-valid config from the registry; for a shipped
+    // preset, the fetch below overrides it with the exact golden config.
     set({
       screen: "console",
       preset: id,
@@ -254,23 +260,27 @@ export const useStore = create<MWState>((set, get) => ({
       node: "market",
       view: "arena",
       expanded: null,
-      rounds: DEFAULT_ROUNDS[mech],
-      marketParams: { ...DEFAULT_PARAMS[mech] },
-      cohorts: cohortsFor(mech),
+      showConfig: false,
+      rounds: spec.defaultRounds,
+      marketParams: defaultParams(mech),
+      cohorts: spec.starterCohorts(),
+      seed: blank ? 0 : 7,
+      runName: blank ? "untitled" : spec.type,
+      granularity: spec.granularity,
+      reflectEvery: spec.reflectEvery,
+      shock: null,
+      policyCfg: { ...DEFAULT_POLICY },
+      layers: { info: true, institution: mech === "econ", social: mech === "clob", news: true },
       liveSeries: emptySeries(),
       liveRound: 0,
       metrics: {},
     });
-    if (presetFile) {
-      fetch(`/api/presets/${presetFile}`)
+    get().refreshConfigs();
+    if (!blank) {
+      fetch(`/api/presets/${MECH_TO_TYPE[mech]}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((cfg) => {
-          if (!cfg) return;
-          set({
-            cohorts: (cfg.cohorts || cohortsFor(mech)) as Cohort[],
-            marketParams: cfg.market?.params || { ...DEFAULT_PARAMS[mech] },
-            rounds: cfg.rounds || DEFAULT_ROUNDS[mech],
-          });
+          if (cfg) get().applyConfig(cfg, id);
         })
         .catch(() => {});
     }
@@ -279,25 +289,29 @@ export const useStore = create<MWState>((set, get) => ({
   selectNode: (n) => set({ node: n }),
   setView: (v) => set({ view: v }),
 
-  setMech: (m) =>
+  setMech: (m) => {
+    const spec = getMarket(m);
     set({
       mech: m,
-      marketParams: { ...DEFAULT_PARAMS[m] },
-      rounds: DEFAULT_ROUNDS[m],
-      cohorts: cohortsFor(m),
+      marketParams: defaultParams(m),
+      rounds: spec.defaultRounds,
+      granularity: spec.granularity,
+      reflectEvery: spec.reflectEvery,
+      cohorts: spec.starterCohorts(),
+      shock: null,
       node: "market",
       expanded: null,
-    }),
+    });
+  },
 
   addCohort: () =>
     set((s) => {
-      const idx = s.cohorts.length + 1;
-      return {
-        cohorts: [
-          ...s.cohorts,
-          { id: `cohort${idx}`, name: "New cohort", n: 10, persona: "custom persona" },
-        ],
-      };
+      const co = getMarket(s.mech).newCohort(s.cohorts.length + 1);
+      // keep ids unique even if the user has removed/re-added cohorts
+      let id = co.id;
+      let k = 1;
+      while (s.cohorts.some((c) => c.id === id)) id = `${co.id}_${k++}`;
+      return { cohorts: [...s.cohorts, { ...co, id }] };
     }),
 
   removeCohort: (id) =>
@@ -315,6 +329,111 @@ export const useStore = create<MWState>((set, get) => ({
     set((s) => ({ cohorts: s.cohorts.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
 
   toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
+
+  setMarketParam: (key, value) =>
+    set((s) => ({ marketParams: { ...s.marketParams, [key]: value } })),
+  setRounds: (n) => set({ rounds: Math.max(1, Math.floor(n) || 1) }),
+  setSeed: (n) => set({ seed: Math.floor(n) || 0 }),
+  setRunName: (str) => set({ runName: str }),
+  setGranularity: (g) => set({ granularity: g }),
+  setReflectEvery: (n) => set({ reflectEvery: Math.max(1, Math.floor(n) || 1) }),
+  setShock: (patch) =>
+    set((s) =>
+      patch === null
+        ? { shock: null }
+        : { shock: { round: 24, kind: "cost_jump", magnitude: 0.1, ...(s.shock || {}), ...patch } },
+    ),
+  setPolicyCfg: (patch) => set((s) => ({ policyCfg: { ...s.policyCfg, ...patch } })),
+  toggleConfigView: () => set((s) => ({ showConfig: !s.showConfig })),
+
+  // Map an engine Config object into the editable store (preset fetch + saved-config load).
+  applyConfig: (cfg, preset) => {
+    if (!cfg || !cfg.market) return;
+    const mech: Mech = TYPE_TO_MECH[cfg.market.type] || "fish";
+    const spec = getMarket(mech);
+    const sh = cfg.layers?.shock;
+    const lay = cfg.layers || {};
+    set((s) => ({
+      mech,
+      preset: preset !== undefined ? preset : s.preset,
+      marketParams: { ...defaultParams(mech), ...(cfg.market.params || {}) },
+      cohorts: (cfg.cohorts && cfg.cohorts.length ? cfg.cohorts : spec.starterCohorts()) as Cohort[],
+      rounds: cfg.rounds ?? spec.defaultRounds,
+      seed: cfg.seed ?? 0,
+      runName: cfg.run_name || spec.type,
+      granularity: cfg.scheduler?.granularity || spec.granularity,
+      reflectEvery: cfg.scheduler?.reflect_every ?? spec.reflectEvery,
+      shock: sh
+        ? { round: Number(sh.round ?? -1), kind: sh.kind || "cost_jump", magnitude: Number(sh.magnitude ?? 0.1) }
+        : null,
+      policyCfg: {
+        model: cfg.policy?.model || DEFAULT_POLICY.model,
+        use_cache: cfg.policy?.use_cache !== false,
+        max_concurrency: Number(cfg.policy?.max_concurrency ?? DEFAULT_POLICY.max_concurrency),
+      },
+      layers: {
+        info: lay.observation !== false,
+        institution: mech === "econ",
+        social: !!lay.social || mech === "clob",
+        news: lay.news !== false,
+      },
+      node: "market",
+      expanded: null,
+    }));
+  },
+
+  refreshConfigs: () => {
+    fetch("/api/configs")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: any[]) => {
+        // server may return plain string ids or {id,...} metadata objects
+        const metas: SavedConfigMeta[] = (list || []).map((c) =>
+          typeof c === "string" ? { id: c } : (c as SavedConfigMeta),
+        );
+        set({ savedConfigs: metas });
+      })
+      .catch(() => {});
+  },
+
+  saveCurrentConfig: async (name) => {
+    const s = get();
+    const config = buildConfig(s);
+    try {
+      const r = await fetch("/api/configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name || s.runName || config.run_name, config }),
+      });
+      if (!r.ok) return null;
+      const { id } = await r.json();
+      get().refreshConfigs();
+      return id as string;
+    } catch {
+      return null;
+    }
+  },
+
+  loadSavedConfig: async (id) => {
+    try {
+      const r = await fetch(`/api/configs/${id}`);
+      if (!r.ok) return;
+      const cfg = await r.json();
+      pushPath("console");
+      set({
+        screen: "console",
+        view: "arena",
+        node: "market",
+        expanded: null,
+        showConfig: false,
+        liveSeries: emptySeries(),
+        liveRound: 0,
+        metrics: {},
+      });
+      get().applyConfig(cfg, id);
+    } catch {
+      /* ignore */
+    }
+  },
 
   openExpanded: (id) => set({ expanded: id, node: `cohort:${id}` }),
   collapse: () => set({ expanded: null }),

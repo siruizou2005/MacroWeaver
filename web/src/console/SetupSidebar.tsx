@@ -30,18 +30,21 @@ function Block({ id, glyph, glyphColor, label, optional }: any) {
 
 export function SetupSidebar() {
   const preset = useStore((s) => s.preset) || "blank";
+  const runName = useStore((s) => s.runName);
   const cohorts = useStore((s) => s.cohorts);
   const node = useStore((s) => s.node);
   const selectNode = useStore((s) => s.selectNode);
   const addCohort = useStore((s) => s.addCohort);
   const total = cohorts.reduce((m, c) => m + c.n, 0);
+  const simName = PRESET_NAMES[preset] || runName || "Simulation";
+  const simId = PRESET_IDS[preset] || runName || "config";
 
   return (
     <aside style={{ borderRight: "1px solid var(--border)", background: "#fff", padding: "22px 16px", overflowY: "auto" }}>
       <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".14em", color: "var(--muted)", textTransform: "uppercase", margin: "0 0 10px 4px" }}>Simulation</div>
       <div style={{ border: "1px solid var(--border)", borderRadius: 11, padding: "12px 13px", marginBottom: 18 }}>
-        <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15 }}>{PRESET_NAMES[preset]}</div>
-        <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)", marginTop: 3 }}>{PRESET_IDS[preset]} · {total} agents</div>
+        <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15 }}>{simName}</div>
+        <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)", marginTop: 3 }}>{simId} · {total} agents</div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 4px 9px" }}>

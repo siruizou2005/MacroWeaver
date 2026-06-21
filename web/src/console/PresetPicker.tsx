@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "../store";
 
 const serif = "'Spectral',serif";
@@ -69,6 +70,11 @@ export function PresetPicker() {
   const openPreset = useStore((s) => s.openPreset);
   const traces = useStore((s) => s.traces);
   const loadTrace = useStore((s) => s.loadTrace);
+  const savedConfigs = useStore((s) => s.savedConfigs);
+  const refreshConfigs = useStore((s) => s.refreshConfigs);
+  const loadSavedConfig = useStore((s) => s.loadSavedConfig);
+
+  useEffect(() => { refreshConfigs(); }, [refreshConfigs]);
 
   const fishSvg = {
     bg: "linear-gradient(180deg,#f1f7f3,#e7f1ea)",
@@ -114,6 +120,26 @@ export function PresetPicker() {
             <span style={{ fontSize: 12.5, maxWidth: 160, textAlign: "center" }}>Two cohorts, an empty market</span>
           </div>
         </div>
+
+        {savedConfigs.length > 0 && (
+          <div style={{ marginTop: 44 }}>
+            <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 20, margin: "0 0 14px" }}>Saved configs</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
+              {savedConfigs.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => loadSavedConfig(c.id)}
+                  className="mw-card-hover"
+                  style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}
+                >
+                  <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.market || "config"}</div>
+                  <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0" }}>{c.run_name || c.id}</div>
+                  <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}edit ▸</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {traces.length > 0 && (
           <div style={{ marginTop: 44 }}>

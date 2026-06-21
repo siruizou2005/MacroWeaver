@@ -1,6 +1,7 @@
 import { useStore } from "../../store";
-import { agentColor } from "../../lib/chart";
 import { CohortDrawer } from "./CohortDrawer";
+import { getMarket, marketChips } from "../marketFields";
+import type { Mech } from "../../types";
 
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
@@ -14,10 +15,9 @@ const ACOLORS = [
   { bg: "#f1eae9", fg: "#9a5a52" },
 ];
 
-export function marketMeta(mech: string) {
-  if (mech === "econ") return { name: "Labor + Goods", chips: ["wage rule", "CPI", "employment"] };
-  if (mech === "clob") return { name: "Order book", chips: ["price-time", "depth", "tape"] };
-  return { name: "Fish · Calvano", chips: ["μ=0.25", "a=[2,2]", "a₀=0"] };
+// Headline market card name + chips, derived from the registry + live params.
+export function marketMeta(mech: Mech, params: Record<string, any> = {}) {
+  return { name: getMarket(mech).name, chips: marketChips(mech, params) };
 }
 
 export function WorldArena() {
@@ -29,6 +29,8 @@ export function WorldArena() {
   const selectNode = useStore((s) => s.selectNode);
   const openExpanded = useStore((s) => s.openExpanded);
   const rounds = useStore((s) => s.rounds);
+  const granularity = useStore((s) => s.granularity);
+  const marketParams = useStore((s) => s.marketParams);
   const running = useStore((s) => s.running);
   const liveRound = useStore((s) => s.liveRound);
   const startRun = useStore((s) => s.startRun);
@@ -36,7 +38,7 @@ export function WorldArena() {
   const k = cohorts.length;
   const cx = 318, cy = 262;
   const R = k <= 3 ? 196 : k <= 5 ? 202 : 210;
-  const mkt = marketMeta(mech);
+  const mkt = marketMeta(mech, marketParams);
 
   const infoOp = layers.info ? 0.95 : 0.22;
   const instOp = layers.institution ? 0.95 : 0.16;
@@ -145,7 +147,7 @@ export function WorldArena() {
 
       {/* scheduler timeline dock */}
       <div style={{ borderTop: "1px solid var(--border)", background: "#fff", padding: "11px 20px", display: "flex", alignItems: "center", gap: 16, zIndex: 13 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".05em", color: "var(--muted)", whiteSpace: "nowrap" }}>Scheduler · {rounds} rounds · sync</span>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".05em", color: "var(--muted)", whiteSpace: "nowrap" }}>Scheduler · {rounds} {granularity}s · sync</span>
         <div style={{ flex: 1, position: "relative", height: 16 }}>
           <div style={{ position: "absolute", top: 6, left: 0, right: 0, height: 4, borderRadius: 4, background: "#e6e9e5" }} />
           <div style={{ position: "absolute", top: 6, left: 0, width: trackFill, height: 4, borderRadius: 4, background: "var(--green)" }} />

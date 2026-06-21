@@ -16,6 +16,26 @@ export interface Cohort {
   reflection?: string;
 }
 
+// Engine layers.shock: {round, kind, magnitude} | null
+export interface ShockConfig {
+  round: number;
+  kind: string;
+  magnitude: number;
+}
+
+export interface PolicyCfg {
+  model: string;
+  use_cache: boolean;
+  max_concurrency: number;
+}
+
+export interface SavedConfigMeta {
+  id: string;
+  run_name?: string;
+  market?: string;
+  rounds?: number;
+}
+
 export interface Benchmarks {
   bertrand?: number;
   monopoly?: number;

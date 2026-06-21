@@ -1,16 +1,21 @@
 import { useStore } from "../../store";
+import { getMarket } from "../marketFields";
+import type { Cohort, Mech } from "../../types";
 
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
 
-function stagesFor(mech: string) {
-  const profile = mech === "fish" ? "cost · type · bias" : mech === "econ" ? "income · age · bias" : "wealth · risk · bias";
+function stagesFor(co: Cohort, mech: Mech) {
+  const spec = getMarket(mech);
+  const profileKeys =
+    Object.entries(co.profile || {}).map(([k, v]) => `${k}=${v}`).join(" · ") ||
+    spec.profileFields.map((f) => f.key).join(" · ") || "—";
   const perceive = mech === "fish" ? "reads price · news" : mech === "econ" ? "reads wages · prices" : "reads book · news · sentiment";
   return [
-    { t: "Profile", s: profile },
+    { t: "Profile", s: profileKeys },
     { t: "Perception", s: perceive },
-    { t: "Memory + Reflection", s: "notepad · pool · BDI" },
-    { t: "Decision", s: "LLM → action" },
+    { t: "Memory + Reflection", s: `${co.memory || spec.defaultMemory} · ${co.reflection || spec.defaultReflection}` },
+    { t: "Decision", s: `${co.policy || "deterministic"} → ${spec.action}` },
   ];
 }
 
@@ -21,7 +26,7 @@ export function CohortDrawer() {
   const collapse = useStore((s) => s.collapse);
   const co = cohorts.find((c) => c.id === expanded);
   if (!co) return null;
-  const stages = stagesFor(mech);
+  const stages = stagesFor(co, mech);
 
   return (
     <>
