@@ -51,5 +51,5 @@ def test_trace_schema_shape():
     trace = runner.trace()
     for k in ("schema_version", "config", "market", "benchmarks", "agents", "series", "rounds", "metrics"):
         assert k in trace, k
-    assert len(trace["rounds"]) == 48
+    assert len(trace["rounds"]) == runner.config.rounds
     assert all("reasoning" in a for a in trace["rounds"][10]["agents"])

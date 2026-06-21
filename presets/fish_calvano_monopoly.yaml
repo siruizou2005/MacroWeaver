@@ -1,0 +1,50 @@
+# Fish et al. 2024 — MONOPOLY model-validation pre-step (run this BEFORE the duopoly).
+# A SINGLE pricing firm on the P0 (base) prompt, Claude Haiku 4.5 @ temperature 1. The point of
+# the paper's monopoly experiment: a model that can't even find and hold the optimal price as a
+# monopolist won't produce a clean super-competitive signal in the duopoly. Run it ~3 times and
+# confirm price converges to and holds the monopoly optimum.
+#
+# NOTE ON THE TARGET: with n=1 the engine's "monopoly" benchmark is the SINGLE-firm optimum
+# (~1.78 at these params), NOT the 2-firm joint-monopoly 1.92 (joint monopoly internalizes the
+# cross-product substitution and is higher). So validate against ~1.78 here. If you specifically
+# want a 1.92 target, that requires one agent controlling BOTH products — ask and I'll add it.
+#
+# Live only (needs ANTHROPIC_API_KEY); use_cache off so the 3 runs are independent samples.
+seed: 3
+rounds: 200
+run_name: fish_calvano_monopoly
+
+market:
+  type: fish_calvano
+  params:
+    a: 2.0
+    mu: 0.25
+    a0: 0.0
+    cost: 1.0
+    alpha: 1.0
+    beta: 100.0
+
+cohorts:
+  - id: monopolist
+    name: Monopolist
+    n: 1
+    persona: pricing manager for the only firm in the market
+    policy: claude
+    profile: { prefix: P0, cost: 1.0 }
+    initial_state: { price: 1.50 }
+    memory: notepad
+    reflection: none
+
+layers:
+  observation: true
+  news: false
+
+scheduler:
+  granularity: round
+  reflect_every: 4
+
+policy:
+  model: claude-haiku-4-5
+  temperature: 1
+  use_cache: false
+  max_concurrency: 1

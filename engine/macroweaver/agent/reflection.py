@@ -63,9 +63,19 @@ class BDIUpdate(Reflection):
         return f"recent P&L {_trend(pnl)}; {'holding conviction' if _trend(pnl)!='falling' else 'cutting risk'}"
 
 
+class NoReflection(Reflection):
+    """No-op: the policy (Claude) already writes its own INSIGHTS.txt each round, so the
+    templated reflection must not clobber it. Used by the faithful Fish LLM preset."""
+
+    def update(self, memory, private_state: dict) -> str:
+        return ""
+
+
 def make_reflection(kind: str, every: int) -> Reflection:
     if kind == "quarterly":
         return QuarterlyReflection(every)
     if kind == "bdi":
         return BDIUpdate(every)
+    if kind in ("none", "off", "manual"):
+        return NoReflection(every)
     return InsightUpdate(every)

@@ -21,11 +21,13 @@ class Memory(ABC):
 
 
 class NotepadMemory(Memory):
-    def __init__(self, window: int = 8):
+    def __init__(self, window: int = 100):
+        # Fish: the prompt shows the last 100 rounds of market history (my price, competitor's
+        # price, my quantity, my profit) plus the running PLANS.txt / INSIGHTS.txt files.
         self.window = window
         self.plans: str = ""
         self.insights: str = ""
-        self.history: list[dict] = []   # [{round, price, profit, rival}]
+        self.history: list[dict] = []   # [{round, price, rival_price, qty, profit}]
 
     def recall(self, round_no: int) -> dict:
         return {
@@ -35,14 +37,18 @@ class NotepadMemory(Memory):
         }
 
     def store(self, round_no: int, outcome, decision) -> None:
+        # keep the realized (posted, clamped) price + the rival's price from the outcome
         rec = {"round": round_no}
         rec.update(outcome.realized if outcome else {})
         if decision is not None:
-            rec["price"] = decision.action.payload.get("price")
             self.plans = decision.beliefs.get("plans", self.plans) or self.plans
+            ins = decision.beliefs.get("insights")
+            if ins:                                  # LLM rewrites INSIGHTS.txt each round (overwrite)
+                self.insights = ins
         self.history.append(rec)
 
     def add_insight(self, insight: str) -> None:
+        # reflection-supplied insight (deterministic mode); LLM mode uses reflection="none"
         if insight:
             self.insights = (self.insights + " " + insight).strip()[-1200:]
 

@@ -71,11 +71,16 @@ class ClaudePolicy(DecisionPolicy):
         self.market = market
         self.model = (policy_cfg.model if policy_cfg else None) or os.environ.get("MW_MODEL", "claude-opus-4-8")
         self.use_cache = policy_cfg.use_cache if policy_cfg else True
+        # temperature is forwarded only when set AND the model supports sampling params
+        # (Haiku 4.5 accepts 0..1; Opus 4.7/4.8 reject it — leave it None there).
+        self.temperature = getattr(policy_cfg, "temperature", None) if policy_cfg else None
         self.max_retries = 5
         self.pace = 0.2
         self.client = anthropic.Anthropic()
         self._tool_schema = market.decision_schema().model_json_schema()
         self._system = _SYSTEM.get(market.id, "You are an autonomous economic agent. Maximize your objective.")
+        # a market may supply a faithful, paper-specific prompt (prefix=system, the rest=user)
+        self._use_mkt_prompt = hasattr(market, "prompt_system") and hasattr(market, "prompt_user")
 
     # ---- cache ----
     def _cache_path(self, system: str, user: str, key: str) -> Path:
@@ -99,8 +104,12 @@ class ClaudePolicy(DecisionPolicy):
 
     def decide(self, agent_id, market_id, obs, memory, profile, persona, round_no, rng,
                decision_schema, parse_decision) -> Decision:
-        system = self._system
-        user = self._user_prompt(obs, memory, profile, persona, round_no)
+        if self._use_mkt_prompt:
+            system = self.market.prompt_system(persona, profile)
+            user = self.market.prompt_user(obs, memory, round_no)
+        else:
+            system = self._system
+            user = self._user_prompt(obs, memory, profile, persona, round_no)
         key = f"{agent_id}:{round_no}"
         raw = self._complete(system, user, key)
         if raw is None:
@@ -109,8 +118,10 @@ class ClaudePolicy(DecisionPolicy):
             action = parse_decision(raw, agent_id)
         except Exception as e:  # noqa: BLE001
             return Decision(action=AgentAction(agent_id, "hold", {}), beliefs={}, reasoning=f"(held — parse error: {e})")
-        reasoning = str(raw.get("reasoning", ""))[:300]
-        beliefs = {k: v for k, v in raw.items() if k != "reasoning"}
+        # the paper's template returns observations/plans/insights/price; surface observations as
+        # the reasoning note and keep plans+insights in beliefs so NotepadMemory writes them back.
+        reasoning = str(raw.get("observations") or raw.get("reasoning", ""))[:500]
+        beliefs = {k: v for k, v in raw.items() if k not in ("observations", "reasoning")}
         return Decision(action=action, beliefs=beliefs, reasoning=reasoning)
 
     def _complete(self, system: str, user: str, key: str) -> dict | None:
@@ -131,14 +142,17 @@ class ClaudePolicy(DecisionPolicy):
             if self.pace:
                 time.sleep(self.pace)
             try:
-                resp = self.client.messages.create(
+                kwargs = dict(
                     model=self.model,
-                    max_tokens=1024,
+                    max_tokens=2048,
                     system=system,
                     messages=[{"role": "user", "content": user}],
                     tools=[tool],
                     tool_choice={"type": "tool", "name": "submit_decision"},
                 )
+                if self.temperature is not None:
+                    kwargs["temperature"] = self.temperature
+                resp = self.client.messages.create(**kwargs)
             except Exception as e:  # noqa: BLE001
                 msg = str(e)
                 if _is_transient(msg) and transient_tries < self.max_retries:

@@ -50,7 +50,8 @@ export interface MarketSpec {
 }
 
 export const MEMORY_KINDS = ["notepad", "pool", "bdi"];
-export const REFLECTION_KINDS = ["insight", "quarterly", "bdi"];
+// "none" = no templated reflection (the LLM writes its own INSIGHTS each round — Fish faithful preset)
+export const REFLECTION_KINDS = ["insight", "quarterly", "bdi", "none"];
 export const GRANULARITIES = ["round", "month", "quarter", "session"];
 export const SHOCK_KINDS = ["cost_jump"]; // only fish_calvano reacts; free text allowed
 
@@ -70,17 +71,21 @@ const FISH: MarketSpec = {
   granularity: "round",
   reflectEvery: 4,
   defaultMemory: "notepad",
-  defaultReflection: "insight",
+  defaultReflection: "none",
   benchmarks: ["bertrand", "monopoly"],
   params: [
     { key: "a", label: "Quality / intercept a", type: "number", default: 2.0, step: 0.1, hint: "utils" },
     { key: "mu", label: "Substitution μ", type: "number", default: 0.25, step: 0.05, min: 0.01, hint: "lower = price-sensitive" },
     { key: "a0", label: "Outside option a₀", type: "number", default: 0.0, step: 0.1 },
     { key: "cost", label: "Marginal cost c", type: "number", default: 1.0, step: 0.1, hint: "market default" },
-    { key: "p_min", label: "Min price", type: "number", default: 1.0, step: 0.1, hint: "clamp" },
-    { key: "p_max", label: "Max price", type: "number", default: 2.6, step: 0.1, hint: "clamp" },
+    { key: "alpha", label: "Money scale α", type: "number", default: 1.0, step: 0.1, hint: "price/cost ×α" },
+    { key: "beta", label: "Quantity scale β", type: "number", default: 100.0, step: 10, hint: "qty ×β" },
+    { key: "p_min", label: "Min price (floor)", type: "number", default: 0.0, step: 0.1, hint: "safety clamp" },
+    { key: "cap_lo", label: "Cap × low", type: "number", default: 1.5, step: 0.1, hint: "cap ~U[lo,hi]·monopoly·α" },
+    { key: "cap_hi", label: "Cap × high", type: "number", default: 2.5, step: 0.1, hint: "shown price cap range" },
   ],
   profileFields: [
+    { key: "prefix", label: "Prompt prefix", type: "enum", default: "P1", options: ["P0", "P1", "P2"], hint: "Claude only · P1=strong collusion" },
     { key: "cost", label: "Marginal cost", type: "number", default: 1.0, step: 0.1, hint: "per-agent override" },
   ],
   stateFields: [
@@ -92,16 +97,16 @@ const FISH: MarketSpec = {
     n: 1,
     persona: "price-setter",
     policy: "deterministic",
-    profile: { cost: 1.0 },
+    profile: { prefix: "P1", cost: 1.0 },
     initial_state: { price: 1.5 },
     memory: "notepad",
-    reflection: "insight",
+    reflection: "none",
   }),
   starterCohorts: () => [
-    { id: "incumbent", name: "Incumbent", n: 1, persona: "cautious · high margin", policy: "deterministic", profile: { cost: 1.0 }, initial_state: { price: 1.5 }, memory: "notepad", reflection: "insight" },
-    { id: "challenger", name: "Challenger", n: 1, persona: "aggressive · willing to undercut", policy: "deterministic", profile: { cost: 1.0 }, initial_state: { price: 1.45 }, memory: "notepad", reflection: "insight" },
+    { id: "incumbent", name: "Incumbent", n: 1, persona: "pricing manager for firm A", policy: "deterministic", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.5 }, memory: "notepad", reflection: "none" },
+    { id: "challenger", name: "Challenger", n: 1, persona: "pricing manager for firm B", policy: "deterministic", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.45 }, memory: "notepad", reflection: "none" },
   ],
-  chips: (p) => [`μ=${num(p.mu, 0.25)}`, `a=${num(p.a, 2)}`, `a₀=${num(p.a0, 0)}`],
+  chips: (p) => [`μ=${num(p.mu, 0.25)}`, `a=${num(p.a, 2)}`, `α=${num(p.alpha, 1)}`],
 };
 
 const ECON: MarketSpec = {
