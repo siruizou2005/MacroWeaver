@@ -1,7 +1,7 @@
 """Agent memory — three column-mapped implementations behind one ABC.
 
   notepad : Fish — free-text plans + accumulated insights (a running notepad)
-  pool    : EconAgent — a bounded L-round pool of recent observations
+  pool    : EconAgent — short-term + long-term bounded windows of recent observations
   bdi     : CLOB/TwinMarket — Belief-Desire-Intention slots updated each round
 """
 
@@ -54,22 +54,34 @@ class NotepadMemory(Memory):
 
 
 class MemoryPool(Memory):
-    """Bounded L-round pool (EconAgent style)."""
+    """Two-tier bounded history (EconAgent style): a short deque for the agent's immediate
+    reaction and a longer deque for a trend/volatility baseline, mirroring the paper's
+    short-term + long-term memory split (this is the lever for emergent macro behavior,
+    not a single flat window)."""
 
-    def __init__(self, length: int = 12):
-        self.length = length
-        self.pool: list[dict] = []
+    def __init__(self, short: int = 3, long: int = 7):
+        self.short = short
+        self.long = long
+        self.history: list[dict] = []
         self.insights: str = ""
 
+    @property
+    def short_term(self) -> list[dict]:
+        return self.history[-self.short:]
+
+    @property
+    def long_term(self) -> list[dict]:
+        return self.history[-self.long:]
+
     def recall(self, round_no: int) -> dict:
-        return {"pool": self.pool[-self.length:], "insights": self.insights}
+        return {"short_term": self.short_term, "long_term": self.long_term, "insights": self.insights}
 
     def store(self, round_no: int, outcome, decision) -> None:
         rec = {"round": round_no}
         rec.update(outcome.realized if outcome else {})
-        self.pool.append(rec)
-        if len(self.pool) > self.length * 4:
-            self.pool = self.pool[-self.length * 2:]
+        self.history.append(rec)
+        if len(self.history) > self.long * 4:
+            self.history = self.history[-self.long * 2:]
 
     def add_insight(self, insight: str) -> None:
         if insight:

@@ -203,17 +203,21 @@ class EconAgentMarket(Market):
         # buy now when inflation is high; save more when wealthy
         consume_p = 0.86 + 0.012 * infl - min(0.2, wealth / 500.0) + (float(rng.random()) - 0.5) * 0.05
 
-        # react to this agent's own realized history (pool), not just the current round —
-        # a choppy/falling income (e.g. gig work) should make the same persona behave more
-        # precautionary than a steady one, without hardcoding that by cohort name.
-        income_hist = [p.get("income", 0.0) for p in memory.get("pool", [])]
+        # react to this agent's own realized history, not just the current round — a
+        # choppy/falling income (e.g. gig work) should make the same persona behave more
+        # precautionary than a steady one, without hardcoding that by cohort name. The long
+        # window gives a steadier volatility baseline; the short window drives the fast
+        # reaction to "did income just drop" (mirrors the paper's short+long memory split).
+        long_income = [p.get("income", 0.0) for p in memory.get("long_term", [])]
+        short_income = [p.get("income", 0.0) for p in memory.get("short_term", [])]
         income_falling = False
-        if len(income_hist) >= 2:
-            avg_income = sum(income_hist) / len(income_hist)
-            income_falling = income_hist[-1] - income_hist[0] < -1e-6
-            if avg_income > 1e-6 and (max(income_hist) - min(income_hist)) / avg_income > 0.35:
+        if len(long_income) >= 2:
+            avg_income = sum(long_income) / len(long_income)
+            if avg_income > 1e-6 and (max(long_income) - min(long_income)) / avg_income > 0.35:
                 work_p += 0.06
                 consume_p -= 0.08
+        if len(short_income) >= 2:
+            income_falling = short_income[-1] - short_income[0] < -1e-6
             if income_falling:
                 work_p += 0.05
                 consume_p -= 0.04

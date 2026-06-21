@@ -58,20 +58,24 @@ class QuarterlyReflection(Reflection):
     """Income trend alone reads the same for all six EconAgent personas (workers,
     savers, spenders, gig, retirees, students) — it ignores the very things that are
     supposed to set a high-MPC "spender" apart from a "saver", or volatile "gig" income
-    from a steady wage. Derive that signal from each agent's own realized pool instead of
-    hardcoding cohort names, so the differentiation emerges from behavior, not labels.
+    from a steady wage. Derive that signal from each agent's own realized history instead
+    of hardcoding cohort names, so the differentiation emerges from behavior, not labels.
+    Reads the long window for trend/MPC/volatility (a steadier baseline) and the short
+    window for "did something change just now" (employment gaps), mirroring the paper's
+    short-term + long-term memory split.
     """
 
     def __init__(self, every: int = 4):
         super().__init__(every)
 
     def update(self, memory, private_state: dict) -> str:
-        pool = getattr(memory, "pool", [])
-        income = [p.get("income", 0.0) for p in pool]
+        long_term = getattr(memory, "long_term", [])
+        short_term = getattr(memory, "short_term", [])
+        income = [p.get("income", 0.0) for p in long_term]
         if not income:
             return ""
-        consumption = [p.get("consumption", 0.0) for p in pool]
-        employed = [p.get("employed") for p in pool if p.get("employed") is not None]
+        consumption = [p.get("consumption", 0.0) for p in long_term]
+        employed = [p.get("employed") for p in short_term if p.get("employed") is not None]
 
         notes = [f"income {_trend(income)} this quarter"]
 
@@ -86,7 +90,7 @@ class QuarterlyReflection(Reflection):
         if _volatility(income) > 0.35:
             notes.append("income swinging quarter to quarter, keep a reserve")
 
-        if employed and not any(employed[-2:]):
+        if employed and not any(employed):
             notes.append("no work the last two quarters, prioritize finding hours")
 
         return "; ".join(notes) + "; adjusting work/consumption"
