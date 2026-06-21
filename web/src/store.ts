@@ -4,6 +4,7 @@ import type {
   Screen, ShockConfig, Trace, TraceMeta,
 } from "./types";
 import { defaultParams, getMarket } from "./console/marketFields";
+import { loadDefaults } from "./lib/defaults";
 
 // ---- market <-> mech mapping ----
 const MECH_TO_TYPE: Record<Mech, string> = {
@@ -15,6 +16,12 @@ const TYPE_TO_MECH: Record<string, Mech> = {
   fish_calvano: "fish",
   econagent: "econ",
   clob: "clob",
+};
+// shipped preset file id per market (differs from the engine market.type)
+const PRESET_FILE: Record<Mech, string> = {
+  fish: "fish_calvano",
+  econ: "econagent_macro",
+  clob: "clob_twinmarket",
 };
 
 const DEFAULT_POLICY: PolicyCfg = { model: "claude-opus-4-8", use_cache: true, max_concurrency: 5 };
@@ -34,6 +41,7 @@ function emptySeries(): LiveSeries {
 const SCREEN_PATH: Record<Screen, string> = {
   landing: "/",
   docs: "/docs",
+  blog: "/blog",
   console: "/console",
   replay: "/replay",
 };
@@ -41,6 +49,7 @@ function pathToScreen(path: string): Screen {
   if (path.startsWith("/console") || path.startsWith("/presets")) return "console";
   if (path.startsWith("/replay")) return "replay";
   if (path.startsWith("/docs")) return "docs";
+  if (path.startsWith("/blog")) return "blog";
   return "landing";
 }
 function pushPath(s: Screen) {
@@ -250,6 +259,7 @@ export const useStore = create<MWState>((set, get) => ({
     const blank = id === "blank";
     const mech: Mech = blank ? "fish" : (id as Mech);
     const spec = getMarket(mech);
+    const d = loadDefaults(); // Settings-page defaults for new from-scratch worlds
     pushPath("console");
     // scaffold a complete, engine-valid config from the registry; for a shipped
     // preset, the fetch below overrides it with the exact golden config.
@@ -265,12 +275,12 @@ export const useStore = create<MWState>((set, get) => ({
       marketParams: defaultParams(mech),
       // blank = a true from-0 start: no cohorts, the user picks a market and adds them
       cohorts: blank ? [] : spec.starterCohorts(),
-      seed: blank ? 0 : 7,
+      seed: blank ? d.seed : 7,
       runName: blank ? "untitled" : spec.type,
       granularity: spec.granularity,
       reflectEvery: spec.reflectEvery,
       shock: null,
-      policyCfg: { ...DEFAULT_POLICY },
+      policyCfg: { model: d.model, use_cache: d.useCache, max_concurrency: d.maxConcurrency },
       layers: { info: true, institution: mech === "econ", social: mech === "clob", news: true },
       liveSeries: emptySeries(),
       liveRound: 0,
@@ -278,7 +288,7 @@ export const useStore = create<MWState>((set, get) => ({
     });
     get().refreshConfigs();
     if (!blank) {
-      fetch(`/api/presets/${MECH_TO_TYPE[mech]}`)
+      fetch(`/api/presets/${PRESET_FILE[mech]}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((cfg) => {
           if (cfg) get().applyConfig(cfg, id);

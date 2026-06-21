@@ -1,8 +1,19 @@
 // Mirrors the engine's trace.json + streamed event shapes (shared/*.schema.json).
 
-export type Screen = "landing" | "docs" | "console" | "replay";
+export type Screen = "landing" | "docs" | "blog" | "console" | "replay";
 export type CanvasView = "arena" | "roster" | "engine";
 export type Mech = "fish" | "econ" | "clob";
+
+// console library (left rail of the preset picker)
+export type LibTab = "presets" | "traces" | "markets" | "schema" | "settings";
+
+// app-level defaults, persisted to localStorage and applied to new scratch worlds
+export interface AppDefaults {
+  model: string;
+  maxConcurrency: number;
+  useCache: boolean;
+  seed: number;
+}
 
 export interface Cohort {
   id: string;

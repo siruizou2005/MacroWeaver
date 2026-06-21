@@ -3,6 +3,7 @@ import { useStore } from "./store";
 import type { Screen } from "./types";
 import { Landing } from "./views/Landing";
 import { Docs } from "./views/Docs";
+import { Blog } from "./views/Blog";
 import { Console } from "./views/Console";
 import { Replay } from "./views/Replay";
 
@@ -32,7 +33,9 @@ function Header() {
   const nav = useStore((s) => s.nav);
   const screen = useStore((s) => s.screen);
   const connected = useStore((s) => s.connected);
+  const backToPicker = useStore((s) => s.backToPicker);
   const inApp = screen === "console" || screen === "replay";
+  const enterConsole = () => { backToPicker(); nav("console"); };
   return (
     <header
       style={{
@@ -90,13 +93,15 @@ function Header() {
         </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {inApp ? (
+            // Replay is entered by opening a specific trace (Library → Traces),
+            // so there is no ambiguous top-level "Replay" jump here.
             <>
               <NavLink label="Console" target="console" />
-              <NavLink label="Replay" target="replay" />
             </>
           ) : (
             <>
               <NavLink label="Overview" target="landing" />
+              <NavLink label="Blog" target="blog" />
               <NavLink label="Docs" target="docs" />
             </>
           )}
@@ -116,7 +121,7 @@ function Header() {
             </span>
           ) : (
             <button
-              onClick={() => nav("console")}
+              onClick={enterConsole}
               style={{
                 fontFamily: "inherit",
                 fontSize: 14,
@@ -147,11 +152,16 @@ export function App() {
     window.addEventListener("popstate", syncFromPath);
     return () => window.removeEventListener("popstate", syncFromPath);
   }, [connect, syncFromPath]);
+  // reset scroll on every screen change so a jump never lands mid-page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [screen]);
   return (
     <div style={{ minHeight: "100vh" }}>
       <Header />
       {screen === "landing" && <Landing />}
       {screen === "docs" && <Docs />}
+      {screen === "blog" && <Blog />}
       {screen === "console" && <Console />}
       {screen === "replay" && <Replay />}
     </div>
