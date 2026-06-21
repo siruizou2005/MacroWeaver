@@ -13,6 +13,7 @@ export interface AppDefaults {
   maxConcurrency: number;
   useCache: boolean;
   seed: number;
+  nickname: string; // author handle used when publishing to Markets
 }
 
 export interface Cohort {
@@ -45,6 +46,15 @@ export interface SavedConfigMeta {
   run_name?: string;
   market?: string;
   rounds?: number;
+}
+
+// a config published to Markets, with its author nickname
+export interface TemplateMeta {
+  id: string;
+  name?: string;
+  market?: string;
+  rounds?: number;
+  author?: string;
 }
 
 export interface Benchmarks {

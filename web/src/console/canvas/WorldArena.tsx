@@ -115,11 +115,11 @@ export function WorldArena() {
             {/* empty from-0 state — prompt to add cohorts */}
             {k === 0 && (
               <div style={{ position: "absolute", left: cx, top: cy + 92, transform: "translate(-50%,0)", width: 250, textAlign: "center" }}>
-                <div style={{ fontFamily: serif, fontSize: 15, fontWeight: 600, color: "var(--green-d)" }}>No cohorts yet</div>
+                <div style={{ fontFamily: serif, fontSize: 15, fontWeight: 600, color: "var(--green-d)" }}>No agents yet</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.45 }}>
-                  Pick the market above, then add agent cohorts around it from the Roster or the sidebar.
+                  Pick the market above, then add agents around it from the Roster or the sidebar.
                 </div>
-                <div onClick={addCohort} style={{ display: "inline-flex", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "var(--green)", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add cohort</div>
+                <div onClick={addCohort} style={{ display: "inline-flex", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "var(--green)", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add agent</div>
               </div>
             )}
 
@@ -171,7 +171,7 @@ export function WorldArena() {
           disabled={running || k === 0}
           style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "var(--green-d)", background: "var(--green-l)", border: "1px solid #d3e7db", padding: "7px 14px", borderRadius: 8, cursor: running || k === 0 ? "default" : "pointer", whiteSpace: "nowrap", opacity: running || k === 0 ? 0.6 : 1 }}
         >
-          {running ? "running…" : k === 0 ? "add a cohort to run" : "▶ Run golden trace"}
+          {running ? "running…" : k === 0 ? "add an agent to run" : "▶ Run golden trace"}
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import { PRESETS_DIR, TRACES_DIR, CONFIGS_DIR } from "./config.js";
+import { PRESETS_DIR, TRACES_DIR, CONFIGS_DIR, TEMPLATES_DIR } from "./config.js";
 
 // --- path sandboxing: never read/write outside the intended directory ---
 function safeJoin(dir, name) {
@@ -122,5 +122,44 @@ export function saveConfig(name, configObj) {
   const id = slug(name || configObj?.run_name || "config");
   const p = safeJoin(CONFIGS_DIR, `${id}.yaml`);
   fs.writeFileSync(p, YAML.stringify(configObj), "utf-8");
+  return id;
+}
+
+// ---------- published Markets templates (config + author nickname) ----------
+export function listTemplates() {
+  if (!fs.existsSync(TEMPLATES_DIR)) return [];
+  return fs
+    .readdirSync(TEMPLATES_DIR)
+    .filter((f) => f.endsWith(".yaml"))
+    .map((f) => {
+      const id = f.replace(/\.yaml$/, "");
+      let cfg = {};
+      try {
+        cfg = YAML.parse(fs.readFileSync(path.join(TEMPLATES_DIR, f), "utf-8")) || {};
+      } catch {
+        /* ignore malformed */
+      }
+      return {
+        id,
+        name: cfg.run_name || id,
+        market: cfg.market?.type || "config",
+        rounds: cfg.rounds || 0,
+        author: cfg.author || "anonymous",
+      };
+    });
+}
+
+export function getTemplate(id) {
+  const p = safeJoin(TEMPLATES_DIR, `${slug(id)}.yaml`);
+  if (!fs.existsSync(p)) return null;
+  return YAML.parse(fs.readFileSync(p, "utf-8"));
+}
+
+export function saveTemplate(name, author, configObj) {
+  const id = slug(name || configObj?.run_name || "template");
+  const p = safeJoin(TEMPLATES_DIR, `${id}.yaml`);
+  // author rides along at the top level; the engine ignores unknown keys and the
+  // editor rebuilds a clean config from buildConfig() on run, so it never reaches the kernel.
+  fs.writeFileSync(p, YAML.stringify({ ...configObj, author: String(author || "anonymous") }), "utf-8");
   return id;
 }

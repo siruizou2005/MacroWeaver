@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type {
   Benchmarks, Cohort, CanvasView, Mech, PolicyCfg, PresetMeta, SavedConfigMeta,
-  Screen, ShockConfig, Trace, TraceMeta,
+  Screen, ShockConfig, TemplateMeta, Trace, TraceMeta,
 } from "./types";
 import { defaultParams, getMarket } from "./console/marketFields";
 import { loadDefaults } from "./lib/defaults";
@@ -83,6 +83,7 @@ interface MWState {
   presets: PresetMeta[];
   traces: TraceMeta[];
   savedConfigs: SavedConfigMeta[];
+  publishedTemplates: TemplateMeta[]; // configs published to Markets
   showConfig: boolean; // raw config (JSON) viewer open?
 
   // live run
@@ -131,6 +132,9 @@ interface MWState {
   refreshConfigs: () => void;
   saveCurrentConfig: (name?: string) => Promise<string | null>;
   loadSavedConfig: (id: string) => Promise<void>;
+  refreshTemplates: () => void;
+  publishConfig: (author: string) => Promise<string | null>;
+  loadTemplate: (id: string) => Promise<void>;
   openExpanded: (id: string) => void;
   collapse: () => void;
   startRun: () => void;
@@ -201,6 +205,7 @@ export const useStore = create<MWState>((set, get) => ({
   presets: [],
   traces: [],
   savedConfigs: [],
+  publishedTemplates: [],
   showConfig: false,
 
   running: false,
@@ -287,6 +292,7 @@ export const useStore = create<MWState>((set, get) => ({
       metrics: {},
     });
     get().refreshConfigs();
+    get().refreshTemplates();
     if (!blank) {
       fetch(`/api/presets/${PRESET_FILE[mech]}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -426,6 +432,54 @@ export const useStore = create<MWState>((set, get) => ({
   loadSavedConfig: async (id) => {
     try {
       const r = await fetch(`/api/configs/${id}`);
+      if (!r.ok) return;
+      const cfg = await r.json();
+      pushPath("console");
+      set({
+        screen: "console",
+        view: "arena",
+        node: "market",
+        expanded: null,
+        showConfig: false,
+        liveSeries: emptySeries(),
+        liveRound: 0,
+        metrics: {},
+      });
+      get().applyConfig(cfg, id);
+    } catch {
+      /* ignore */
+    }
+  },
+
+  refreshTemplates: () => {
+    fetch("/api/templates")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: TemplateMeta[]) => set({ publishedTemplates: list || [] }))
+      .catch(() => {});
+  },
+
+  // publish the current world to Markets under an author nickname
+  publishConfig: async (author) => {
+    const s = get();
+    const config = buildConfig(s);
+    try {
+      const r = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: s.runName || config.run_name, author, config }),
+      });
+      if (!r.ok) return null;
+      const { id } = await r.json();
+      get().refreshTemplates();
+      return id as string;
+    } catch {
+      return null;
+    }
+  },
+
+  loadTemplate: async (id) => {
+    try {
+      const r = await fetch(`/api/templates/${id}`);
       if (!r.ok) return;
       const cfg = await r.json();
       pushPath("console");

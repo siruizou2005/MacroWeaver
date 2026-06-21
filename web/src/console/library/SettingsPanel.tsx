@@ -44,6 +44,9 @@ export function SettingsPanel() {
       <section style={{ marginTop: 26 }}>
         <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 18, margin: "0 0 12px" }}>Defaults for new worlds</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Field label="publish nickname" hint="author handle">
+            <input type="text" value={d.nickname} placeholder="e.g. alice" onChange={(e) => set({ nickname: e.target.value })} style={input} />
+          </Field>
           <Field label="LLM model" hint="anthropic id">
             <input type="text" value={d.model} onChange={(e) => set({ model: e.target.value })} style={input} />
           </Field>
@@ -78,7 +81,7 @@ export function SettingsPanel() {
       <section style={{ marginTop: 26 }}>
         <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 18, margin: "0 0 10px" }}>Determinism & keys</h2>
         <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--muted)", margin: 0 }}>
-          Deterministic cohorts need no API key and reproduce byte-exact. A cohort set to <span style={{ fontFamily: mono }}>Claude</span> calls Anthropic on the engine; if <span style={{ fontFamily: mono }}>ANTHROPIC_API_KEY</span> is unset there, it falls back to deterministic so every run still produces a curve.
+          Deterministic agents need no API key and reproduce byte-exact. An agent set to <span style={{ fontFamily: mono }}>Claude</span> calls Anthropic on the engine; if <span style={{ fontFamily: mono }}>ANTHROPIC_API_KEY</span> is unset there, it falls back to deterministic so every run still produces a curve.
         </p>
       </section>
     </div>

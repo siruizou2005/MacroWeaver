@@ -35,6 +35,7 @@ export function SetupSidebar() {
   const node = useStore((s) => s.node);
   const selectNode = useStore((s) => s.selectNode);
   const addCohort = useStore((s) => s.addCohort);
+  const removeCohort = useStore((s) => s.removeCohort);
   const total = cohorts.reduce((m, c) => m + c.n, 0);
   const simName = PRESET_NAMES[preset] || runName || "Simulation";
   const simId = PRESET_IDS[preset] || runName || "config";
@@ -48,10 +49,13 @@ export function SetupSidebar() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "0 4px 9px" }}>
-        <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>Cohorts · {cohorts.length}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--muted)" }}>Agents · {cohorts.length}</span>
         <span onClick={addCohort} style={{ fontSize: 12, fontWeight: 600, color: "var(--green)", cursor: "pointer" }}>+ Add</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 18 }}>
+        {cohorts.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--muted)", padding: "6px 9px", lineHeight: 1.4 }}>No agents yet — <span onClick={addCohort} style={{ color: "var(--green)", fontWeight: 600, cursor: "pointer" }}>+ Add</span> one.</div>
+        )}
         {cohorts.map((co, i) => {
           const sel = node === `cohort:${co.id}`;
           const col = ACOLORS[i % ACOLORS.length];
@@ -64,6 +68,13 @@ export function SetupSidebar() {
               <span style={{ width: 22, height: 22, borderRadius: 6, background: col.bg, color: col.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flex: "none" }}>◎</span>
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{co.name}</span>
               <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>×{co.n}</span>
+              <span
+                onClick={(e) => { e.stopPropagation(); removeCohort(co.id); }}
+                title="Delete agent"
+                style={{ fontSize: 14, color: "#c2ccc4", cursor: "pointer", lineHeight: 1, flex: "none", padding: "0 1px" }}
+              >
+                ×
+              </span>
             </div>
           );
         })}

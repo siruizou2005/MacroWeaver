@@ -133,7 +133,7 @@ const ECON: MarketSpec = {
   ],
   newCohort: (idx) => ({
     id: `group${idx}`,
-    name: "New cohort",
+    name: "New agent",
     n: 20,
     persona: "households",
     policy: "deterministic",

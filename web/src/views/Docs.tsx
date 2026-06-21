@@ -19,7 +19,7 @@ function Section({ kicker, title, children }: { kicker: string; title: string; c
 
 const markets = [
   { name: "Fish · Calvano", type: "fish_calvano", body: "Pricing LLMs on a logit-demand market. Watch price drift from the competitive Bertrand level toward the monopoly price — algorithmic collusion with no communication." },
-  { name: "EconAgent · Macro", type: "econagent", body: "Household cohorts make work/consume decisions that aggregate into wages, prices, employment and inflation (CPI)." },
+  { name: "EconAgent · Macro", type: "econagent", body: "Household agents make work/consume decisions that aggregate into wages, prices, employment and inflation (CPI)." },
   { name: "TwinMarket · CLOB", type: "clob", body: "A central limit order book where fundamentalist, momentum and noise traders post orders; traded price tracks fair value." },
 ];
 
@@ -67,7 +67,7 @@ export function Docs() {
 
       <Section kicker="Workflow" title="From console to replay">
         <p style={{ margin: 0 }}>
-          Open the console, pick a preset, inspect the cohorts and tune the rules, then <strong style={{ color: "var(--ink)" }}>Run</strong>.
+          Open the console, pick a preset, inspect the agents and tune the rules, then <strong style={{ color: "var(--ink)" }}>Run</strong>.
           The engine streams each round live; when it finishes you land in <strong style={{ color: "var(--ink)" }}>Replay</strong>,
           where you can scrub the timeline round by round and read each agent's reasoning note.
         </p>

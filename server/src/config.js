@@ -10,6 +10,7 @@ export const ENGINE_DIR = path.join(ROOT, "engine");
 export const PRESETS_DIR = path.join(ROOT, "presets");
 export const TRACES_DIR = path.join(ROOT, "traces");
 export const CONFIGS_DIR = path.join(ROOT, "configs");
+export const TEMPLATES_DIR = path.join(ROOT, "templates"); // published-to-Markets community templates
 export const SHARED_DIR = path.join(ROOT, "shared");
 
 export const PORT = Number(process.env.MW_PORT || 8787);
@@ -22,6 +23,6 @@ function resolvePython() {
 }
 export const PYTHON = resolvePython();
 
-for (const d of [TRACES_DIR, CONFIGS_DIR]) {
+for (const d of [TRACES_DIR, CONFIGS_DIR, TEMPLATES_DIR]) {
   fs.mkdirSync(d, { recursive: true });
 }

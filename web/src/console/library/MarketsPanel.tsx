@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import { MARKETS } from "../marketFields";
 import type { Mech } from "../../types";
@@ -15,8 +15,11 @@ const ACCENT: Record<Mech, { fg: string; bg: string }> = {
 export function MarketsPanel() {
   const openPreset = useStore((s) => s.openPreset);
   const setMech = useStore((s) => s.setMech);
-  const savedConfigs = useStore((s) => s.savedConfigs);
-  const loadSavedConfig = useStore((s) => s.loadSavedConfig);
+  const templates = useStore((s) => s.publishedTemplates);
+  const refreshTemplates = useStore((s) => s.refreshTemplates);
+  const loadTemplate = useStore((s) => s.loadTemplate);
+
+  useEffect(() => { refreshTemplates(); }, [refreshTemplates]);
 
   const blankWith = (m: Mech) => { openPreset("blank"); setMech(m); };
 
@@ -55,21 +58,30 @@ export function MarketsPanel() {
         })}
       </div>
 
-      {savedConfigs.length > 0 && (
-        <div style={{ marginTop: 40 }}>
-          <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 20, margin: "0 0 4px" }}>Community templates</h2>
-          <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 14px" }}>Saved configs shared in your library — open any as an editable starting point.</p>
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 20, margin: "0 0 4px" }}>Community templates</h2>
+        <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 14px" }}>
+          Worlds published to Markets. Open any as an editable starting point — publish your own from a world's <span style={{ fontFamily: mono, fontSize: 12 }}>{"{ } config"}</span> panel.
+        </p>
+        {templates.length === 0 ? (
+          <div style={{ border: "1.5px dashed #cfd6cf", borderRadius: 14, padding: "30px 20px", textAlign: "center", color: "var(--muted)", fontSize: 13.5 }}>
+            Nothing published yet — build a world, then “Publish to Markets” with your nickname.
+          </div>
+        ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-            {savedConfigs.map((c) => (
-              <div key={c.id} onClick={() => loadSavedConfig(c.id)} className="mw-card-hover" style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
+            {templates.map((c) => (
+              <div key={c.id} onClick={() => loadTemplate(c.id)} className="mw-card-hover" style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
                 <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.market || "config"}</div>
-                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0" }}>{c.run_name || c.id}</div>
-                <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}edit ▸</div>
+                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0" }}>{c.name || c.id}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 11.5, color: "var(--green-d)", fontWeight: 600 }}>by {c.author || "anonymous"}</span>
+                  <span style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}open ▸</span>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

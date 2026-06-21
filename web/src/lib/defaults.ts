@@ -9,6 +9,7 @@ export const FALLBACK_DEFAULTS: AppDefaults = {
   maxConcurrency: 5,
   useCache: true,
   seed: 0,
+  nickname: "",
 };
 
 export function loadDefaults(): AppDefaults {

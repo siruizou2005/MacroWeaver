@@ -42,9 +42,9 @@ export function Roster() {
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "22px 2px 12px" }}>
           <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 18 }}>
-            Cohorts · {cohorts.length} <span style={{ fontSize: 13, color: "var(--muted)", fontFamily: "Hanken Grotesk", fontWeight: 500 }}>({total} agents)</span>
+            Agents · {cohorts.length} <span style={{ fontSize: 13, color: "var(--muted)", fontFamily: "Hanken Grotesk", fontWeight: 500 }}>({total} total)</span>
           </span>
-          <span onClick={addCohort} style={{ fontSize: 13, fontWeight: 600, color: "var(--green)", cursor: "pointer", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px" }}>+ Add cohort</span>
+          <span onClick={addCohort} style={{ fontSize: 13, fontWeight: 600, color: "var(--green)", cursor: "pointer", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px" }}>+ Add agent</span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(208px,1fr))", gap: 12 }}>
@@ -73,7 +73,7 @@ export function Roster() {
           })}
           <div onClick={addCohort} style={{ border: "1.5px dashed #cfd6cf", borderRadius: 13, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 128, color: "var(--muted)", cursor: "pointer" }}>
             <span style={{ fontSize: 24, fontWeight: 300 }}>+</span>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Add cohort</span>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Add agent</span>
           </div>
         </div>
       </div>

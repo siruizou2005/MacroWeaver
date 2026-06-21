@@ -137,7 +137,7 @@ export function Inspector() {
   let glyph = "⊞", title = "Market · Mechanism", badge: keyof typeof BADGES = "i", sub = spec.blurb;
   if (node?.startsWith("cohort:")) { glyph = "◎"; badge = "g"; }
   else if (node === "observation") { glyph = "◇"; title = "Observation"; badge = "g"; sub = "What each agent sees, and the world-layer toggles. Only the news layer changes the run."; }
-  else if (node === "scheduler") { glyph = "◷"; title = "Scheduler & run"; badge = "g"; sub = "Clock, horizon, seed and the LLM policy used when a cohort runs on Claude."; }
+  else if (node === "scheduler") { glyph = "◷"; title = "Scheduler & run"; badge = "g"; sub = "Clock, horizon, seed and the LLM policy used when an agent runs on Claude."; }
   else if (node === "recorder") { glyph = "▤"; title = "Recorder"; badge = "g"; sub = "Logs state + metrics each round, computes benchmarks, exports the trace."; }
   else if (node === "shock") { glyph = "⚡"; title = "Shock (optional)"; badge = "a"; sub = "An optional intervention the Scheduler injects at a chosen round."; }
 
@@ -235,7 +235,7 @@ function SchedulerPanel() {
       <Row label="run name" hint="trace id"><Text value={runName} onChange={setRunName} /></Row>
 
       <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
-      <SectionLabel>LLM policy · claude cohorts only</SectionLabel>
+      <SectionLabel>LLM policy · claude agents only</SectionLabel>
       <Row label="model" hint="anthropic id"><Text value={policyCfg.model} onChange={(v) => setPolicyCfg({ model: v })} /></Row>
       <Row label="max concurrency" hint="int"><Num value={policyCfg.max_concurrency} min={1} step={1} onChange={(n) => setPolicyCfg({ max_concurrency: Math.round(n) })} /></Row>
       <Row label="response cache" hint="reuse"><Bool value={policyCfg.use_cache} onChange={(b) => setPolicyCfg({ use_cache: b })} /></Row>
@@ -299,6 +299,7 @@ function CohortPanel({ id }: { id: string }) {
   const cohorts = useStore((s) => s.cohorts);
   const mech = useStore((s) => s.mech);
   const updateCohort = useStore((s) => s.updateCohort);
+  const removeCohort = useStore((s) => s.removeCohort);
   const openExpanded = useStore((s) => s.openExpanded);
   const spec = getMarket(mech);
   const co = cohorts.find((c) => c.id === id) || cohorts[0];
@@ -348,8 +349,15 @@ function CohortPanel({ id }: { id: string }) {
         </>
       )}
 
+      <button
+        onClick={() => removeCohort(co.id)}
+        style={{ marginTop: 4, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "#a8443c", background: "#fbf1f0", border: "1px solid #ecd5d2", borderRadius: 9, padding: "9px 12px", cursor: "pointer" }}
+      >
+        Delete agent
+      </button>
+
       <div style={{ paddingTop: 12, borderTop: "1px solid var(--border)", fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>
-        cohort → market (synchronous settlement)
+        agent → market (synchronous settlement)
       </div>
     </div>
   );
