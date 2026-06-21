@@ -23,6 +23,22 @@ function Feature({ glyph, title, children }: { glyph: string; title: string; chi
   );
 }
 
+function IntroCard({
+  title, question, caption, onClick,
+}: { title: string; question: string; caption: string; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      className="mw-card-hover"
+      style={{ border: "1px solid var(--border)", borderRadius: 16, padding: "28px 26px", background: "#fff", cursor: "pointer" }}
+    >
+      <h3 style={{ fontFamily: serif, fontWeight: 600, fontSize: 23, margin: "0 0 10px", color: "var(--ink)" }}>{title}</h3>
+      <p style={{ fontSize: 15.5, lineHeight: 1.55, color: "var(--muted)", margin: "0 0 18px" }}>{question}</p>
+      <p style={{ fontSize: 13, color: "var(--green)", margin: 0, fontStyle: "italic" }}>{caption}</p>
+    </div>
+  );
+}
+
 function PresetCard({
   badge, badgeColor, badgeBg, title, body, onClick,
 }: any) {
@@ -73,19 +89,25 @@ export function Landing() {
       </section>
 
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "18px 32px 70px" }}>
-        <div style={{ textAlign: "center", fontSize: 12.5, fontWeight: 600, letterSpacing: ".16em", textTransform: "uppercase", marginBottom: 30 }}>
-          Reproducing results from
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "14px 40px", fontFamily: serif, fontSize: 19, color: "#6d756e" }}>
-          <span style={{ fontWeight: 600, color: "var(--ink)" }}>Fish et&nbsp;al. 2024</span>
-          <span style={{ opacity: 0.35 }}>·</span>
-          <span>Algorithmic Collusion</span>
-          <span style={{ opacity: 0.35 }}>·</span>
-          <span>EconAgent</span>
-          <span style={{ opacity: 0.35 }}>·</span>
-          <span>Calvano logit</span>
-          <span style={{ opacity: 0.35 }}>·</span>
-          <span>Bertrand–Nash</span>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
+          <IntroCard
+            title="AI Pricing Competition"
+            question="Can AI firms learn to keep prices high?"
+            caption="Inspired by Fish et al. 2024"
+            onClick={() => openPreset("fish")}
+          />
+          <IntroCard
+            title="Macro Economy"
+            question="How do work and spending decisions shape inflation?"
+            caption="Inspired by EconAgent"
+            onClick={() => openPreset("econ")}
+          />
+          <IntroCard
+            title="Trading Market"
+            question="How do many small orders create market dynamics?"
+            caption="TwinMarket preset"
+            onClick={() => openPreset("clob")}
+          />
         </div>
       </section>
 
