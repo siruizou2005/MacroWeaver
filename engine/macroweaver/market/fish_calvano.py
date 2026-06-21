@@ -96,7 +96,8 @@ class FishCalvanoMarket(Market):
         cap = mult * self._bench["monopoly"] * a
         prices, costs, starts = {}, {}, {}
         for i, spec in enumerate(agents):
-            costs[spec.agent_id] = float(spec.profile.get("cost", self._params["cost"]))
+            costs[spec.agent_id] = float(spec.traits.get("cost") if spec.traits.get("cost") is not None
+                                         else spec.profile.get("cost", self._params["cost"]))
             start = float(spec.initial_state.get("price", (1.50 - 0.05 * (i % 2)) * a))
             prices[spec.agent_id] = start
             starts[spec.agent_id] = start
@@ -250,36 +251,6 @@ class FishCalvanoMarket(Market):
             "Keep them detailed and precise but concise, without repetition.",
         ]
         return "\n".join(parts)
-
-    # ----- deterministic golden heuristic (no LLM; reproduces the collusion curve offline) -----
-    def heuristic(self, agent_id, obs, memory, profile, persona, round_no, rng) -> Decision:
-        bench = self._bench
-        pB, pM = bench["bertrand"], bench["monopoly"]
-        alpha = self._params["alpha"]
-        own_last = float(obs.private.get("price", 1.5 * alpha)) / alpha  # work in normalized price space
-        rivals = obs.public.get("rival_prices", [])
-        rival_mean = (sum(rivals) / len(rivals) / alpha) if rivals else own_last
-        # rising focal point: tacit coordination strengthens over time (reproduces the curve)
-        prog = 1.0 - math.exp(-round_no / 13.0)
-        focal = pB + (pM - pB) * prog * 0.9
-        target = max(focal, 0.5 * (focal + rival_mean))
-        noise = (float(rng.random()) - 0.5) * 0.035
-        new_price = own_last + (target - own_last) * 0.40 + noise
-        new_price = min(max(new_price, pB - 0.05), pM + 0.02)
-
-        if round_no < 6:
-            note = "Probing just above marginal cost to read how rivals respond."
-        elif round_no < 16:
-            note = "Rival matched my last raise — stepping price up toward the focal point."
-        elif round_no < 28:
-            note = "Coordination holding; margins improve each round, so I keep nudging up."
-        else:
-            note = "Price sits comfortably above the competitive level. Maintaining — no reason to cut."
-        return Decision(
-            action=AgentAction(agent_id, "set_price", {"price": new_price * alpha}),  # post in real money
-            beliefs={"expected_rival_price": round(rival_mean * alpha, 2), "plans": "match raises, resist cuts"},
-            reasoning=note,
-        )
 
     # ----- benchmark computation (normalized price space; profits scaled by β) -----
     @staticmethod

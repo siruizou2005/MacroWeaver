@@ -1,40 +1,65 @@
-# EconAgent — labor + goods macro market (the "second config" demo).
-# Same agent pipeline as Fish; only the market block changes. Household cohorts pick
-# work/consume propensities that aggregate into CPI, inflation, wages and unemployment.
-seed: 11
-rounds: 40
+# EconAgent — Li et al. 2024 (ACL'24) macro reproduction (the "second config" that proves
+# the market swap). A monthly economy of N=100 households over 20 years (240 steps). Each
+# household sets a work propensity (→ Bernoulli labor) and a consumption propensity (fraction
+# of CURRENT wealth) every month; the engine clears labor, goods, government (progressive 2018
+# tax + lump-sum redistribution) and an annual financial market (savings interest + a Taylor
+# rule on yearly inflation/unemployment). Prices and wages adjust by tâtonnement.
+#
+# Live run: needs ANTHROPIC_API_KEY; flip the cohort's `policy` to `claude` (paper used
+# GPT-3.5-turbo; we run Claude like the Fish preset). 240 months × 100 agents is a large run —
+# raise max_concurrency and keep use_cache off for independent samples.
+# Offline preview / golden trace: `make golden` replays the recorded trace (no API key), so the
+# console visualizes without a live run (CPI, inflation, unemployment, Taylor rate). Record a
+# fresh baseline with a live (claude) run.
+#
+# Fidelity notes (vs github.com/tsinghua-fib-lab/ACL24-EconAgent): the environment dynamics, tax
+# table, Pareto skills, profiles.json demographics/jobs, prompt template and parameters are
+# reproduced faithfully. Two deliberate adaptations: (1) the quarterly reflection is a
+# deterministic templated summary (our shared agent infra) rather than a separate LLM call — the
+# golden trace is faithful; the live path's reflection is templated, not LLM-generated. (2) the
+# reference's vestigial `expected skill` field (unused in its work formula and prompt) is omitted.
+seed: 7
+rounds: 240
 run_name: econagent_macro
+replay_trace_path: traces/golden/econagent_macro.trace.json
 
 market:
   type: econagent
   params:
-    fiscal: true
-    monetary: true
-    interest_rate: 0.01
-    price_k: 0.05
-    wage_k: 0.04
-    productivity: 1.0
+    productivity: 1.0     # A — units of essential goods per labor-hour
+    alpha_w: 0.05         # wage tâtonnement cap   (phi_i ~ sign(phi_bar)·U(0, alpha_w·|phi_bar|))
+    alpha_p: 0.10         # price tâtonnement cap  (phi_P ~ sign(phi_bar)·U(0, alpha_p·|phi_bar|))
+    r_nat: 0.01           # natural interest rate r^n
+    pi_target: 0.02       # target inflation pi^t
+    u_nat: 0.04           # natural unemployment u^n
+    alpha_pi: 0.5         # Taylor inflation gain alpha_pi
+    alpha_u: 0.5          # Taylor unemployment gain alpha_u
+    pareto_shape: 8.0     # skill Pareto param (reference SimpleLabor pareto_param)
+    pmsm: 950.0           # payment_max_skill_multiplier — skill multiplier clipped to [1, pmsm]
+    fiscal: true          # progressive tax + lump-sum redistribution
+    monetary: true        # annual savings interest
 
 cohorts:
-  - { id: workers,  name: Workers,   n: 40,  persona: "wage-earning · consume monthly", policy: deterministic, memory: pool, reflection: quarterly }
-  - { id: savers,   name: Savers,    n: 30,  persona: "precautionary · low spend",      policy: deterministic, memory: pool, reflection: quarterly }
-  - { id: spenders, name: Spenders,  n: 60,  persona: "high marginal propensity",       policy: deterministic, memory: pool, reflection: quarterly }
-  - { id: gig,      name: Gig labor, n: 25,  persona: "volatile income",                policy: deterministic, memory: pool, reflection: quarterly }
-  - { id: retirees, name: Retirees,  n: 18,  persona: "fixed income · price-sensitive", policy: deterministic, memory: pool, reflection: quarterly }
-  - { id: students, name: Students,  n: 12,  persona: "credit-constrained",             policy: deterministic, memory: pool, reflection: quarterly }
+  - id: households
+    name: Households
+    n: 100
+    persona: a representative US household choosing how much to work and consume each month
+    policy: replay               # offline replay of replay_trace_path; flip to `claude` for a live LLM run
+    profile: {}
+    initial_state: { savings: 0.0 }
+    memory: pool                 # rolling pool; the prompt shows the last L=1 month
+    reflection: quarterly        # reflect every quarter (reflect_every below)
 
 layers:
   observation: true
-  institution_fiscal: true
-  institution_monetary: true
-  production: true
-  news: true
+  news: false                    # the faithful prompt carries the macro state itself
 
 scheduler:
-  granularity: quarter
-  reflect_every: 3
+  granularity: month
+  reflect_every: 3               # quarterly reflection (every 3 months)
 
 policy:
-  model: claude-opus-4-8
-  use_cache: true
-  max_concurrency: 5
+  model: claude-haiku-4-5
+  temperature: 1
+  use_cache: false               # independent samples across repeated live runs
+  max_concurrency: 8

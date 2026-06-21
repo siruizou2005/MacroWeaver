@@ -55,12 +55,13 @@ export function Landing() {
           Generative Socio-Economic Simulation Engine
         </div>
         <h1 style={{ fontFamily: serif, fontWeight: 500, fontSize: 78, lineHeight: 1.02, letterSpacing: "-1.5px", margin: "0 auto", maxWidth: 880 }}>
-          Weave markets from the bottom up.
+          Weave societies from the bottom up.
         </h1>
-        <p style={{ fontSize: 21, lineHeight: 1.55, color: "var(--muted)", maxWidth: 680, margin: "30px auto 0" }}>
-          Place LLM agents around an objective market. Let the rules settle every round and drive the
-          next one — and watch system-level behavior like algorithmic collusion emerge. Then replay it,
-          round by round.
+        <p style={{ fontSize: 21, lineHeight: 1.55, color: "var(--muted)", maxWidth: 720, margin: "30px auto 0" }}>
+          Most AI social-science tools treat agents as survey respondents. MacroWeaver puts LLM agents
+          inside shared environments instead — where they decide, interact through objective rules, and
+          learn from feedback. Watch collective behavior like inflation and algorithmic collusion emerge,
+          then replay it round by round.
         </p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 42 }}>
           <button onClick={enterConsole} style={{ fontFamily: "inherit", fontSize: 16, fontWeight: 600, color: "#fff", background: "var(--green)", border: "none", padding: "15px 30px", borderRadius: 10, cursor: "pointer" }}>
@@ -89,20 +90,47 @@ export function Landing() {
         </div>
       </section>
 
+      <section style={{ borderTop: "1px solid var(--border)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "70px 32px", textAlign: "center" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: ".16em", color: "var(--green)", textTransform: "uppercase", marginBottom: 14 }}>
+            One loop under every paper
+          </div>
+          <h2 style={{ fontFamily: serif, fontWeight: 500, fontSize: 38, lineHeight: 1.1, letterSpacing: "-.5px", margin: "0 auto 30px", maxWidth: 640 }}>
+            Behavior is not engineered. It emerges.
+          </h2>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "10px 6px" }}>
+            {["Decision", "Environment", "Outcome", "Observation"].map((step, i) => (
+              <span key={step} style={{ display: "flex", alignItems: "center", gap: "10px 6px" }}>
+                {i > 0 && <span style={{ color: "var(--green)", fontSize: 18, padding: "0 8px" }}>→</span>}
+                <span style={{ fontFamily: mono, fontSize: 15, fontWeight: 500, color: "var(--green-d)", background: "var(--green-l)", padding: "9px 16px", borderRadius: 9 }}>
+                  {step}
+                </span>
+              </span>
+            ))}
+            <span style={{ color: "var(--green)", fontSize: 18, padding: "0 8px" }}>↻</span>
+          </div>
+          <p style={{ fontSize: 16, lineHeight: 1.6, color: "var(--muted)", maxWidth: 600, margin: "30px auto 0" }}>
+            Fish, EconAgent and financial-market papers look like different systems, but they share one
+            shape: agents decide, a mechanism settles the round, and the outcome feeds the next decision.
+            Keep the pipeline, swap the mechanism — and a different research environment falls out.
+          </p>
+        </div>
+      </section>
+
       <section style={{ borderTop: "1px solid var(--border)", background: "#fff" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "80px 32px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 56 }}>
-          <Feature glyph="◎" title="A world with depth">
-            A market at the core, wrapped by an institution layer, an observation layer, then a ring of
-            agent cohorts and their social ties. Concentric, not flat — read the structure at a glance,
-            drill in when you want.
+          <Feature glyph="◎" title="Agents with an inner life">
+            Each cohort carries a profile, private state, memory and reflection — agents perceive the
+            round, recall what happened, decide, then update. The same pipeline drives every environment;
+            only the mechanism at the center changes.
           </Feature>
           <Feature glyph="◷" title="Run a golden trace">
-            Every agent acts at once; the market settles the round into objective outcomes and writes
+            Every agent acts at once; the mechanism settles the round into objective outcomes and writes
             back the world. One run serializes to a deterministic <span style={{ fontFamily: mono, fontSize: 14 }}>trace.json</span> — no API jitter on stage.
           </Feature>
           <Feature glyph="◴" title="Replay every round">
-            Scrub the timeline and watch price track between the Bertrand and monopoly benchmarks — while
-            each agent's reasoning note tells you exactly what it was thinking that round.
+            Scrub the timeline and watch the headline series track its benchmarks — while each agent's
+            reasoning note tells you exactly what it was thinking that round.
           </Feature>
         </div>
       </section>

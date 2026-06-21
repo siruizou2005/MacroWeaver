@@ -2,7 +2,7 @@
 
 export type Screen = "landing" | "docs" | "blog" | "console" | "replay";
 export type CanvasView = "arena" | "roster" | "engine";
-export type Mech = "fish" | "econ" | "clob";
+export type Mech = "fish" | "econ";
 
 // console library (left rail of the preset picker)
 export type LibTab = "presets" | "traces" | "markets" | "schema" | "settings";
@@ -21,6 +21,7 @@ export interface Cohort {
   name: string;
   n: number;
   persona: string;
+  system_prompt?: string;   // optional system-prompt override (blank → market default)
   policy?: string;
   profile?: Record<string, any>;
   initial_state?: Record<string, any>;
@@ -72,6 +73,9 @@ export interface AgentFrame {
   reasoning?: string;
   action?: Record<string, any>;
   realized?: Record<string, any>;
+  question?: Record<string, any>;       // generic Q&A: what this agent perceived this round
+  result_description?: string;          // generic Q&A: one-line summary of its outcome
+  [k: string]: any;                     // market-specific frame fields (income, wealth, …)
 }
 
 export interface RoundFrame {
@@ -97,7 +101,7 @@ export interface Trace {
   granularity: string;
   T: number;
   benchmarks: Benchmarks;
-  agents: { id: string; cohort: string; name: string; persona: string; cost?: number }[];
+  agents: { id: string; cohort: string; name: string; persona: string; system_prompt?: string; cost?: number; [k: string]: any }[];
   series: TraceSeries;
   rounds: RoundFrame[];
   metrics: Record<string, any>;

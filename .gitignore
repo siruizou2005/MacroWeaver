@@ -8,8 +8,10 @@ __pycache__/
 web/dist/
 configs/*.yaml
 templates/*.yaml
+mechanisms/*.py
 traces/*.trace.json
 traces/*.events.jsonl
+traces/saved/
 !traces/golden/
 .env
 .DS_Store

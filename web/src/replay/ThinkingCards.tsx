@@ -31,6 +31,7 @@ function agentStats(a: any, market?: string): { label: string; value: any }[] {
 export function ThinkingCards() {
   const trace = useStore(viewTrace);
   const round = useStore(viewRound);
+  const selectAgent = useStore((s) => s.selectAgent);
   if (!trace || !trace.rounds.length) return null;
   const frame = trace.rounds[Math.min(round, trace.rounds.length - 1)];
   const agents = frame?.agents || [];
@@ -44,13 +45,20 @@ export function ThinkingCards() {
           const color = agentColor(i);
           const stats = agentStats(a, trace.market).filter((st) => st.value != null);
           return (
-            <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 13, padding: 16, background: "#fcfdfc" }}>
+            <div
+              key={a.id}
+              onClick={() => selectAgent(a.id)}
+              title="Open this agent's Q&A"
+              style={{ border: "1px solid var(--border)", borderRadius: 13, padding: 16, background: "#fcfdfc", cursor: "pointer" }}
+            >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                   <span style={{ width: 11, height: 11, borderRadius: 3, background: color }} />
                   <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 16 }}>{a.id}</span>
                 </div>
-                {a.cost != null && <span style={{ fontSize: 11, color: "var(--muted)" }}>cost c={a.cost}</span>}
+                {a.cost != null
+                  ? <span style={{ fontSize: 11, color: "var(--muted)" }}>cost c={a.cost}</span>
+                  : <span style={{ fontSize: 14, color: "var(--muted)" }}>›</span>}
               </div>
               {stats.length > 0 && (
                 <div style={{ display: "flex", gap: 18, marginBottom: 12 }}>

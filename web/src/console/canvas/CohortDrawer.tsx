@@ -15,7 +15,7 @@ function stagesFor(co: Cohort, mech: Mech) {
     { t: "Profile", s: profileKeys },
     { t: "Perception", s: perceive },
     { t: "Memory + Reflection", s: `${co.memory || spec.defaultMemory} · ${co.reflection || spec.defaultReflection}` },
-    { t: "Decision", s: `${co.policy || "deterministic"} → ${spec.action}` },
+    { t: "Decision", s: `${co.policy || "replay"} → ${spec.action}` },
   ];
 }
 

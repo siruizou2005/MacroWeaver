@@ -29,6 +29,9 @@ TS_SENTINEL = "<ts>"
 #   settle        — one agent's per-round market outcome {realized...}
 #   series        — per-round aggregate metrics for the chart {mean_price, collusion_index, ...}
 #   round_end     — {round}
+#   agent_record  — generic per-agent Q&A record {question, result_description}; emitted AFTER
+#                   round_end and ONLY when record_qa is enabled, so it never perturbs the
+#                   default (golden) event stream's ids/bytes.
 #   done          — terminal {trace_path, metrics}
 #   error         — terminal failure {message}
 #
@@ -36,7 +39,7 @@ TS_SENTINEL = "<ts>"
 #   place_order, cancel_order, fill, mint, merge, clearing_trace
 EVENT_TYPES = {
     "config", "benchmarks", "snapshot", "round_start", "news", "shock", "institution",
-    "agent_decision", "settle", "series", "round_end", "done", "error",
+    "agent_decision", "settle", "series", "round_end", "agent_record", "done", "error",
     # CLOB sub-events:
     "place_order", "cancel_order", "fill", "mint", "merge", "clearing_trace",
 }

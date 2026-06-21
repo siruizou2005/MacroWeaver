@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import { PRESETS_DIR, TRACES_DIR, CONFIGS_DIR, TEMPLATES_DIR } from "./config.js";
+import { PRESETS_DIR, TRACES_DIR, CONFIGS_DIR, TEMPLATES_DIR, MECHANISMS_DIR } from "./config.js";
 
 // --- path sandboxing: never read/write outside the intended directory ---
 function safeJoin(dir, name) {
@@ -200,6 +200,36 @@ export function saveTemplate(name, author, configObj) {
 
 export function deleteTemplate(id) {
   const p = safeJoin(TEMPLATES_DIR, `${slug(id)}.yaml`);
+  if (fs.existsSync(p)) fs.rmSync(p);
+  return true;
+}
+
+// ---------- user-authored mechanisms (Market plugins, .py) ----------
+// The slug IS the engine market.type the user references in a preset; the engine loads
+// mechanisms/<slug>.py on a registry miss (AST-gated). We never exec the source here.
+export function listMechanisms() {
+  if (!fs.existsSync(MECHANISMS_DIR)) return [];
+  return fs
+    .readdirSync(MECHANISMS_DIR)
+    .filter((f) => f.endsWith(".py"))
+    .map((f) => ({ id: f.replace(/\.py$/, "") }));
+}
+
+export function getMechanism(id) {
+  const p = safeJoin(MECHANISMS_DIR, `${slug(id)}.py`);
+  if (!fs.existsSync(p)) return null;
+  return fs.readFileSync(p, "utf-8");
+}
+
+export function saveMechanism(name, source) {
+  const id = slug(name);
+  const p = safeJoin(MECHANISMS_DIR, `${id}.py`);
+  fs.writeFileSync(p, String(source ?? ""), "utf-8");
+  return id;
+}
+
+export function deleteMechanism(id) {
+  const p = safeJoin(MECHANISMS_DIR, `${slug(id)}.py`);
   if (fs.existsSync(p)) fs.rmSync(p);
   return true;
 }

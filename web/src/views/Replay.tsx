@@ -4,6 +4,7 @@ import { PriceChart } from "../replay/PriceChart";
 import { Transport } from "../replay/Transport";
 import { FlowStrip } from "../replay/FlowStrip";
 import { ThinkingCards } from "../replay/ThinkingCards";
+import { AgentQA } from "../replay/AgentQA";
 import { RunBar } from "../replay/RunBar";
 import { NewRunBody, NewRunAside } from "../replay/NewRun";
 
@@ -13,6 +14,7 @@ export function Replay() {
   const trace = useStore(viewTrace);
   const round = useStore(viewRound);
   const running = useStore((s) => s.running);
+  const selectedAgentId = useStore((s) => s.selectedAgentId);
   const refreshTraces = useStore((s) => s.refreshTraces);
 
   // keep the replay picker fresh when the page opens
@@ -100,6 +102,6 @@ export function Replay() {
         <FlowStrip />
       </div>
     </>,
-    <ThinkingCards />,
+    selectedAgentId ? <AgentQA /> : <ThinkingCards />,
   );
 }

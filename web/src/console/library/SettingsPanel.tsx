@@ -81,7 +81,7 @@ export function SettingsPanel() {
       <section style={{ marginTop: 26 }}>
         <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 18, margin: "0 0 10px" }}>Determinism & keys</h2>
         <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--muted)", margin: 0 }}>
-          Deterministic agents need no API key and reproduce byte-exact. An agent set to <span style={{ fontFamily: mono }}>Claude</span> calls Anthropic on the engine; if <span style={{ fontFamily: mono }}>ANTHROPIC_API_KEY</span> is unset there, it falls back to deterministic so every run still produces a curve.
+          A <span style={{ fontFamily: mono }}>Replay</span> agent re-plays a recorded trace — no API key, byte-exact. An agent set to <span style={{ fontFamily: mono }}>Claude</span> calls Anthropic on the engine and needs <span style={{ fontFamily: mono }}>ANTHROPIC_API_KEY</span>; record a run live once, then replay it offline forever.
         </p>
       </section>
     </div>

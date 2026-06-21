@@ -1,5 +1,104 @@
 {
   "$defs": {
+    "AgentDef": {
+      "description": "One explicitly-defined individual agent (the materialised-roster authoring layer).\n\nWhen `Config.agents` is set it is the authoritative roster: each entry is one agent, with\n`cohort` naming the archetype it was generated from (used for any unset defaults). Unset\npersona/policy/memory/reflection fall back to that archetype cohort; `traits` carries the\nagent's market-domain trait values (e.g. econ skill/name/age/job) so the market uses them\ninstead of sampling. This keeps cohort-only presets (no `agents`) byte-exact.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "cohort": {
+          "default": "",
+          "title": "Cohort",
+          "type": "string"
+        },
+        "n": {
+          "default": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "persona": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Persona"
+        },
+        "system_prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "System Prompt"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy"
+        },
+        "memory": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Memory"
+        },
+        "reflection": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reflection"
+        },
+        "profile": {
+          "additionalProperties": true,
+          "title": "Profile",
+          "type": "object"
+        },
+        "initial_state": {
+          "additionalProperties": true,
+          "title": "Initial State",
+          "type": "object"
+        },
+        "traits": {
+          "additionalProperties": true,
+          "title": "Traits",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "AgentDef",
+      "type": "object"
+    },
     "CohortConfig": {
       "description": "A group of homogeneous agents — the design's cohorts[{id,name,n,persona}].",
       "properties": {
@@ -21,8 +120,13 @@
           "title": "Persona",
           "type": "string"
         },
+        "system_prompt": {
+          "default": "",
+          "title": "System Prompt",
+          "type": "string"
+        },
         "policy": {
-          "default": "deterministic",
+          "default": "replay",
           "title": "Policy",
           "type": "string"
         },
@@ -150,6 +254,18 @@
           "default": 5,
           "title": "Max Concurrency",
           "type": "integer"
+        },
+        "question_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question Template"
         }
       },
       "title": "PolicyConfig",
@@ -188,6 +304,18 @@
       "title": "Run Name",
       "type": "string"
     },
+    "replay_trace_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Replay Trace Path"
+    },
     "market": {
       "$ref": "#/$defs/MarketConfig"
     },
@@ -197,6 +325,21 @@
       },
       "title": "Cohorts",
       "type": "array"
+    },
+    "agents": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/AgentDef"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agents"
     },
     "layers": {
       "$ref": "#/$defs/LayerConfig"

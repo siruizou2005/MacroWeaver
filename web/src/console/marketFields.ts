@@ -7,9 +7,9 @@
 //
 // Notes baked in from the audit:
 //  • fish reads a/mu/a0/cost/p_min/p_max (n_firms is dead — firm count = total agents).
-//  • econ's real switches are market.params.fiscal/monetary (+ interest_rate/price_k/
-//    wage_k/productivity). The old {tax,production} keys were never read.
-//  • clob reads fair_value/tick/sigma/init_cash/init_shares/max_age (depth_k is dead).
+//  • econ (faithful EconAgent) reads market.params fiscal/monetary + alpha_w/alpha_p/r_nat/
+//    pi_target/u_nat/alpha_pi/alpha_u/pareto_shape/pareto_min/productivity; cohort
+//    initial_state.savings. name/age/job + Pareto wage are engine-generated (no profile knobs).
 //  • memory ∈ {notepad,pool,bdi} (default notepad), reflection ∈ {insight,quarterly,bdi}
 //    (default insight) — silent fallback on unknown.
 //  • Only layers.news and layers.shock are engine-functional; the other layer flags are
@@ -40,6 +40,13 @@ export interface MarketSpec {
   reflectEvery: number;
   defaultMemory: string;
   defaultReflection: string;
+  // The market's built-in user turn (sent when the global template is blank), split for display:
+  //   defaultInput    — the per-round situation/context the agent observes
+  //   defaultQuestion — the actual ask/instruction posed to the agent
+  // Dynamic per-round values shown as {…}. Faithful condensation of the engine's
+  // market.prompt_user — keep in sync if the engine prompt changes.
+  defaultInput: string;
+  defaultQuestion: string;
   benchmarks: string[];
   params: FieldSpec[]; // market.params
   profileFields: FieldSpec[]; // cohort.profile
@@ -97,6 +104,18 @@ const FISH: MarketSpec = {
   reflectEvery: 4,
   defaultMemory: "notepad",
   defaultReflection: "none",
+  defaultInput:
+    "BASIC MARKET INFORMATION\n" +
+    "Your marginal cost is ${cost} per unit sold. As a rough guide, no buyer will pay more\n" +
+    "than ${price_cap} for your product, so pricing above that is pointless.\n\n" +
+    "MARKET HISTORY (most recent round first, up to the last 100 rounds)\n" +
+    "Round N: My price $…, Competitor's price $…, My quantity sold …, My profit $….\n\n" +
+    "PLANS.txt (pricing strategies you previously decided to test): {plans}\n" +
+    "INSIGHTS.txt (pricing insights you previously recorded): {insights}",
+  defaultQuestion:
+    "Think step by step, then call submit_decision once with: observations, plans, insights,\n" +
+    "and price (just the number). Your plans and insights OVERWRITE the previous files, so\n" +
+    "carry forward anything important.",
   benchmarks: ["bertrand", "monopoly"],
   params: [
     { key: "a", label: "Quality / intercept a", type: "number", default: 2.0, step: 0.1, hint: "utils" },
@@ -121,15 +140,15 @@ const FISH: MarketSpec = {
     name: "New firm",
     n: 1,
     persona: "price-setter",
-    policy: "deterministic",
+    policy: "replay",
     profile: { prefix: "P1", cost: 1.0 },
     initial_state: { price: 1.5 },
     memory: "notepad",
     reflection: "none",
   }),
   starterCohorts: () => [
-    { id: "incumbent", name: "Incumbent", n: 1, persona: "pricing manager for firm A", policy: "deterministic", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.5 }, memory: "notepad", reflection: "none" },
-    { id: "challenger", name: "Challenger", n: 1, persona: "pricing manager for firm B", policy: "deterministic", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.45 }, memory: "notepad", reflection: "none" },
+    { id: "incumbent", name: "Incumbent", n: 1, persona: "pricing manager for firm A", policy: "replay", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.5 }, memory: "notepad", reflection: "none" },
+    { id: "challenger", name: "Challenger", n: 1, persona: "pricing manager for firm B", policy: "replay", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.45 }, memory: "notepad", reflection: "none" },
   ],
   chips: (p) => [`μ=${num(p.mu, 0.25)}`, `a=${num(p.a, 2)}`, `α=${num(p.alpha, 1)}`],
   systemPrompt: (co) => FISH_PREFIX[String(co.profile?.prefix ?? "P1").toUpperCase()] || FISH_PREFIX.P1,
@@ -140,106 +159,74 @@ const ECON: MarketSpec = {
   type: "econagent",
   name: "EconAgent · Macro",
   blurb:
-    "A labor + goods market. Work/consume decisions aggregate into CPI, wages, inflation and unemployment. Prices and wages adjust by tâtonnement.",
+    "EconAgent (Li et al. 2024): N households choose monthly work + consumption propensities. Bernoulli labor → income → progressive 2018 tax + redistribution; demand vs inventory drives price/wage tâtonnement; an annual Taylor rule sets interest. Headline: CPI, inflation, unemployment.",
   action: "work / consume",
-  defaultRounds: 40,
-  granularity: "quarter",
+  defaultRounds: 240,
+  granularity: "month",
   reflectEvery: 3,
   defaultMemory: "pool",
   defaultReflection: "quarterly",
-  benchmarks: ["target_cpi"], // engine benchmarks() returns {"target_cpi": 100.0}
+  defaultInput:
+    "You're {name}, a {age}-year-old individual living in {city}. Now it's {date}.\n" +
+    "Last month you worked as a(an) {job}; if you keep working this month your expected income\n" +
+    "is ${expected_income} ({income_direction} vs last month). Your consumption was\n" +
+    "${last_consumption}. Your tax was ${last_tax} and you received a redistribution credit of\n" +
+    "${last_redistribution}. The average price of essential goods is now ${price}. Your savings\n" +
+    "balance is ${savings}; the bank's interest rate is {interest_rate}%.",
+  defaultQuestion:
+    "Considering your living costs, future aspirations and the broader economy: how willing are\n" +
+    "you to work this month, and how would you plan your spending on essential goods? Call\n" +
+    "submit_decision with 'work' (0–1, step 0.02) and 'consumption' (0–1, step 0.02).",
+  benchmarks: ["baseline"], // engine benchmarks() returns {"baseline": 100.0} (CPI index reference)
   params: [
     { key: "fiscal", label: "Fiscal (tax + transfer)", type: "bool", default: true },
-    { key: "monetary", label: "Monetary (savings interest)", type: "bool", default: true },
-    { key: "interest_rate", label: "Interest rate", type: "number", default: 0.01, step: 0.005, hint: "per quarter" },
-    { key: "price_k", label: "Price adjust gain", type: "number", default: 0.05, step: 0.01 },
-    { key: "wage_k", label: "Wage adjust gain", type: "number", default: 0.04, step: 0.01 },
-    { key: "productivity", label: "Labor productivity", type: "number", default: 1.0, step: 0.1 },
+    { key: "monetary", label: "Monetary (annual interest)", type: "bool", default: true },
+    { key: "alpha_w", label: "Wage adjust cap α_w", type: "number", default: 0.05, step: 0.01, hint: "φ_i ~ sign(φ̄)·U(0,α_w|φ̄|)" },
+    { key: "alpha_p", label: "Price adjust cap α_P", type: "number", default: 0.10, step: 0.01, hint: "φ_P ~ sign(φ̄)·U(0,α_P|φ̄|)" },
+    { key: "r_nat", label: "Natural rate rⁿ", type: "number", default: 0.01, step: 0.005, hint: "Taylor rule" },
+    { key: "pi_target", label: "Target inflation πᵗ", type: "number", default: 0.02, step: 0.005 },
+    { key: "u_nat", label: "Natural unemployment uⁿ", type: "number", default: 0.04, step: 0.005 },
+    { key: "alpha_pi", label: "Taylor π gain α_π", type: "number", default: 0.5, step: 0.1 },
+    { key: "alpha_u", label: "Taylor u gain α_u", type: "number", default: 0.5, step: 0.1 },
+    { key: "pareto_shape", label: "Skill Pareto shape", type: "number", default: 8.0, step: 0.5, hint: "reference pareto_param" },
+    { key: "pmsm", label: "Max skill multiplier", type: "number", default: 950.0, step: 10, hint: "skill clipped to [1, pmsm]" },
+    { key: "productivity", label: "Productivity A", type: "number", default: 1.0, step: 0.1, hint: "goods per labor-hour" },
   ],
-  profileFields: [
-    { key: "skill", label: "Skill (income mult)", type: "number", default: 1.0, step: 0.1, hint: "optional" },
-  ],
+  // households are homogeneous in config — name/age/job + Pareto wage are generated in the
+  // engine, so there are no per-agent profile knobs.
+  profileFields: [],
   stateFields: [
-    { key: "wealth", label: "Starting wealth", type: "number", default: 20.0, step: 1 },
+    { key: "savings", label: "Starting savings $", type: "number", default: 0.0, step: 100 },
   ],
   newCohort: (idx) => ({
-    id: `group${idx}`,
-    name: "New agent",
-    n: 20,
-    persona: "households",
-    policy: "deterministic",
+    id: `households${idx}`,
+    name: "Households",
+    n: 100,
+    persona: "a representative US household choosing how much to work and consume each month",
+    policy: "replay",
     profile: {},
-    initial_state: {},
+    initial_state: { savings: 0.0 },
     memory: "pool",
     reflection: "quarterly",
   }),
   starterCohorts: () => [
-    { id: "workers", name: "Workers", n: 40, persona: "wage-earning · consume monthly", policy: "deterministic", profile: {}, initial_state: {}, memory: "pool", reflection: "quarterly" },
-    { id: "savers", name: "Savers", n: 30, persona: "precautionary · low spend", policy: "deterministic", profile: {}, initial_state: {}, memory: "pool", reflection: "quarterly" },
-    { id: "spenders", name: "Spenders", n: 60, persona: "high marginal propensity", policy: "deterministic", profile: {}, initial_state: {}, memory: "pool", reflection: "quarterly" },
+    { id: "households", name: "Households", n: 100, persona: "a representative US household choosing how much to work and consume each month", policy: "replay", profile: {}, initial_state: { savings: 0.0 }, memory: "pool", reflection: "quarterly" },
   ],
-  chips: (p) => [`fiscal ${p.fiscal === false ? "off" : "on"}`, `r=${num(p.interest_rate, 0.01)}`, "CPI"],
+  chips: (p) => [`tax ${p.fiscal === false ? "off" : "on"}`, `π*=${(num(p.pi_target, 0.02) * 100).toFixed(0)}%`, "CPI"],
   systemPrompt: () =>
-    "You are an autonomous household in a macro economy. Each round you choose how much to work " +
-    "and how much to consume (each a fraction 0..1), reacting to prices, wages, taxes and your " +
-    "wealth, to maximize your long-run well-being.",
+    "You are simulating one representative individual living in the United States. As with all " +
+    "Americans, a portion of your monthly income is taxed by the federal government under a tiered, " +
+    "progressive system: each slice of income that falls within a bracket is taxed only at that " +
+    "bracket's marginal rate. The tax collected is then redistributed equally to every individual " +
+    "as a lump-sum credit. Each month you decide how much to work and how much of your wealth to " +
+    "spend on essential goods, weighing your living costs, your savings, your future aspirations " +
+    "and the broader economic trends to sustain your long-run well-being.",
 };
 
-const CLOB: MarketSpec = {
-  mech: "clob",
-  type: "clob",
-  name: "TwinMarket · CLOB",
-  blurb:
-    "A continuous limit-order book. Fundamentalists, momentum and noise traders submit limit orders; price-time priority matches them and the tape shows stylized facts.",
-  action: "place / hold orders",
-  defaultRounds: 80,
-  granularity: "session",
-  reflectEvery: 5,
-  defaultMemory: "bdi",
-  defaultReflection: "bdi",
-  benchmarks: ["fair value"],
-  params: [
-    { key: "fair_value", label: "Fair value", type: "number", default: 100.0, step: 1 },
-    { key: "tick", label: "Tick size", type: "number", default: 0.05, step: 0.01 },
-    { key: "sigma", label: "FV volatility σ", type: "number", default: 0.012, step: 0.001, hint: "log-return / round" },
-    { key: "init_cash", label: "Initial cash", type: "number", default: 100000, step: 1000 },
-    { key: "init_shares", label: "Initial shares", type: "int", default: 200, step: 10 },
-    { key: "max_age", label: "Order lifetime", type: "int", default: 3, step: 1, min: 1, hint: "rounds" },
-  ],
-  profileFields: [
-    { key: "strategy", label: "Strategy", type: "enum", default: "noise", options: ["fundamental", "momentum", "noise"] },
-  ],
-  stateFields: [
-    { key: "cash", label: "Cash override", type: "number", default: 100000, step: 1000, hint: "optional" },
-    { key: "shares", label: "Shares override", type: "int", default: 200, step: 10, hint: "optional" },
-  ],
-  newCohort: (idx) => ({
-    id: `traders${idx}`,
-    name: "New traders",
-    n: 8,
-    persona: "liquidity",
-    policy: "deterministic",
-    profile: { strategy: "noise" },
-    initial_state: {},
-    memory: "bdi",
-    reflection: "bdi",
-  }),
-  starterCohorts: () => [
-    { id: "fundamental", name: "Fundamentalists", n: 10, persona: "trade toward fair value", policy: "deterministic", profile: { strategy: "fundamental" }, initial_state: {}, memory: "bdi", reflection: "bdi" },
-    { id: "momentum", name: "Momentum", n: 10, persona: "chase trends · herding bias", policy: "deterministic", profile: { strategy: "momentum" }, initial_state: {}, memory: "bdi", reflection: "bdi" },
-    { id: "noise", name: "Noise traders", n: 8, persona: "random liquidity", policy: "deterministic", profile: { strategy: "noise" }, initial_state: {}, memory: "bdi", reflection: "bdi" },
-  ],
-  chips: (p) => [`FV=${num(p.fair_value, 100)}`, `σ=${num(p.sigma, 0.012)}`, `tick=${num(p.tick, 0.05)}`],
-  systemPrompt: () =>
-    "You are an autonomous investor trading one stock on a continuous limit-order book. Each " +
-    "round you may place a single limit order (buy/sell at a price and quantity) or hold, using " +
-    "the last price, the book, recent returns and your own position to make money.",
-};
+const BY_MECH: Record<Mech, MarketSpec> = { fish: FISH, econ: ECON };
+const BY_TYPE: Record<string, MarketSpec> = { fish_calvano: FISH, econagent: ECON };
 
-const BY_MECH: Record<Mech, MarketSpec> = { fish: FISH, econ: ECON, clob: CLOB };
-const BY_TYPE: Record<string, MarketSpec> = { fish_calvano: FISH, econagent: ECON, clob: CLOB };
-
-export const MARKETS: MarketSpec[] = [FISH, ECON, CLOB];
+export const MARKETS: MarketSpec[] = [FISH, ECON];
 
 export function getMarket(mech: Mech): MarketSpec {
   return BY_MECH[mech] ?? FISH;

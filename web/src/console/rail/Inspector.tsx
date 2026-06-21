@@ -58,8 +58,8 @@ function Text({ value, onChange, placeholder }: { value: string; onChange: (s: s
   return <input type="text" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={inputStyle} />;
 }
 
-function Area({ value, onChange }: { value: string; onChange: (s: string) => void }) {
-  return <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical", lineHeight: 1.4 }} />;
+function Area({ value, onChange, rows = 2, placeholder }: { value: string; onChange: (s: string) => void; rows?: number; placeholder?: string }) {
+  return <textarea value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} rows={rows} style={{ ...inputStyle, resize: "vertical", lineHeight: 1.4 }} />;
 }
 
 function Enum({ value, options, onChange }: { value: string; options: string[]; onChange: (s: string) => void }) {
@@ -130,9 +130,9 @@ function SpecField({ f, bag, onSet }: { f: FieldSpec; bag: Record<string, any>; 
   );
 }
 
-const POLICY_OPTS: ["deterministic" | "claude", string][] = [
-  ["deterministic", "Deterministic"],
+const POLICY_OPTS: ["claude" | "replay", string][] = [
   ["claude", "Claude (live)"],
+  ["replay", "Replay (recorded)"],
 ];
 
 const BADGES = {
@@ -148,10 +148,11 @@ export function Inspector() {
 
   // header glyph/title/badge per node
   let glyph = "⊞", title = "Market · Mechanism", badge: keyof typeof BADGES = "i", sub = spec.blurb;
-  if (node?.startsWith("cohort:")) { glyph = "◎"; badge = "g"; }
+  if (node?.startsWith("agent:")) { glyph = "◎"; title = "Agent"; badge = "g"; sub = "One individual agent — edit its name, clone count, trait bag, persona and system prompt. Memory, reflection and decision policy are system-level (the Scheduler panel)."; }
+  else if (node?.startsWith("cohort:")) { glyph = "⌗"; title = "Generator (archetype)"; badge = "g"; sub = "An archetype that samples N agents into the roster. Edit its defaults + how many it generates."; }
   else if (node === "observation") { glyph = "◇"; title = "Observation"; badge = "g"; sub = "What each agent sees, and the world-layer toggles. Only the news layer changes the run."; }
   else if (node === "scheduler") { glyph = "◷"; title = "Scheduler & run"; badge = "g"; sub = "Clock, horizon, seed and the LLM policy used when an agent runs on Claude."; }
-  else if (node === "recorder") { glyph = "▤"; title = "Recorder"; badge = "g"; sub = "Logs state + metrics each round, computes benchmarks, exports the trace."; }
+  else if (node === "recorder") { glyph = "▤"; title = "Question"; badge = "g"; sub = "The prompt posed to each agent every round — its tool answer is its action."; }
   else if (node === "shock") { glyph = "⚡"; title = "Shock (optional)"; badge = "a"; sub = "An optional intervention the Scheduler injects at a chosen round."; }
 
   const b = BADGES[badge];
@@ -170,12 +171,93 @@ export function Inspector() {
       {node === "recorder" && <RecorderPanel />}
       {node === "shock" && <ShockPanel />}
       {node?.startsWith("cohort:") && <CohortPanel id={node.slice(7)} />}
+      {node?.startsWith("agent:") && <AgentPanel id={node.slice(6)} />}
+    </div>
+  );
+}
+
+// one editable trait row: key (renamed on blur), value (number/text), remove. Local key state
+// so typing doesn't remount the row on every keystroke.
+function TraitRow({ agentId, k0, v }: { agentId: string; k0: string; v: any }) {
+  const renameAgentTrait = useStore((s) => s.renameAgentTrait);
+  const updateAgentTrait = useStore((s) => s.updateAgentTrait);
+  const removeAgentTrait = useStore((s) => s.removeAgentTrait);
+  const [k, setK] = useState(k0);
+  useEffect(() => setK(k0), [k0]);
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <input
+        value={k}
+        spellCheck={false}
+        onChange={(e) => setK(e.target.value)}
+        onBlur={() => { if (k && k !== k0) renameAgentTrait(agentId, k0, k); else setK(k0); }}
+        style={{ ...inputStyle, width: 92, flex: "none", padding: "7px 8px", color: "var(--muted)" }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {typeof v === "number"
+          ? <Num value={v} onChange={(n) => updateAgentTrait(agentId, k0, n)} />
+          : <Text value={String(v)} onChange={(t) => updateAgentTrait(agentId, k0, t)} />}
+      </div>
+      <span onClick={() => removeAgentTrait(agentId, k0)} title="remove trait" style={{ fontSize: 16, color: "#c2ccc4", cursor: "pointer", flex: "none", lineHeight: 1 }}>×</span>
+    </div>
+  );
+}
+
+// One individual agent — the only unit in the merged model. Edit its name, clone count, its
+// trait bag (add/rename/remove entries), persona and system prompt. Memory/reflection/policy
+// are system-level (the Scheduler · System panel), not per-agent.
+function AgentPanel({ id }: { id: string }) {
+  const agents = useStore((s) => s.agents);
+  const roster = useStore((s) => s.roster);
+  const cohorts = useStore((s) => s.cohorts);
+  const mech = useStore((s) => s.mech);
+  const updateAgent = useStore((s) => s.updateAgent);
+  const updateAgentTrait = useStore((s) => s.updateAgentTrait);
+  const addAgentTrait = useStore((s) => s.addAgentTrait);
+  const removeAgent = useStore((s) => s.removeAgent);
+  const spec = getMarket(mech);
+
+  const a = (agents ?? roster).find((x) => x.id === id);
+  if (!a) return <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Agent not found — it may have been removed.</div>;
+  const traitEntries = Object.entries(a.traits || {}).filter(([k]) => k !== "name");
+  // show the EFFECTIVE persona / system prompt: the agent's own override if set, otherwise the
+  // value it actually runs with — the cohort persona and the market's default system prompt
+  // (e.g. econ's taxation explainer). Editing stores a per-agent override; leaving it inherits.
+  const co = cohorts.find((c) => c.id === a.cohort) || cohorts[0];
+  const personaVal = a.persona ?? co?.persona ?? "";
+  const sysVal = a.system_prompt ?? co?.system_prompt ?? spec.systemPrompt((co || { profile: {} }) as any);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+      <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }}>{a.id}</div>
+      <Row label="name"><Text value={String(a.traits?.name ?? a.name ?? "")} onChange={(v) => updateAgentTrait(id, "name", v)} /></Row>
+      <Row label="clones ×N" hint="identical copies"><Num value={a.n ?? 1} min={1} step={1} onChange={(v) => updateAgent(id, { n: Math.max(1, Math.round(v)) })} /></Row>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0 -3px" }}>
+        <SectionLabel>Traits</SectionLabel>
+        <span onClick={() => addAgentTrait(id)} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--green)", cursor: "pointer" }}>+ add</span>
+      </div>
+      {traitEntries.length === 0 && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>No traits yet — add one.</div>}
+      {traitEntries.map(([k, v]) => <TraitRow key={k} agentId={id} k0={k} v={v} />)}
+
+      <SectionLabel>Persona</SectionLabel>
+      <Area value={personaVal} rows={3} onChange={(v) => updateAgent(id, { persona: v })} />
+      <SectionLabel>System prompt</SectionLabel>
+      <Area value={sysVal} rows={6} onChange={(v) => updateAgent(id, { system_prompt: v })} />
+
+      <button
+        onClick={() => removeAgent(id)}
+        style={{ marginTop: 4, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "#a8443c", background: "#fbf1f0", border: "1px solid #ecd5d2", borderRadius: 9, padding: "9px 12px", cursor: "pointer" }}
+      >
+        Remove agent
+      </button>
     </div>
   );
 }
 
 function MarketPanel() {
   const mech = useStore((s) => s.mech);
+  const customType = useStore((s) => s.customType);
   const marketParams = useStore((s) => s.marketParams);
   const setMarketParam = useStore((s) => s.setMarketParam);
   const spec = getMarket(mech);
@@ -185,16 +267,25 @@ function MarketPanel() {
     <>
       <SectionLabel>Market · mechanism</SectionLabel>
       <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, background: "var(--indigo-l)", border: "1px solid var(--indigo-bd)", borderRadius: 9, padding: "10px 13px" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--indigo)" }}>{spec.name}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--indigo)" }}>{customType || spec.name}</span>
         <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }} title="The market is chosen when the world is created — start a new world to change it">🔒 fixed</span>
       </div>
-      <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)", marginBottom: 14 }}>type · {spec.type}</div>
+      <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)", marginBottom: 14 }}>type · {customType || spec.type}</div>
+      {customType ? (
+        <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+          Custom Python mechanism — its parameters come from the <span style={{ fontFamily: mono }}>.py</span> <span style={{ fontFamily: mono }}>init_world</span> defaults.
+          No golden trace exists yet, so run it live (Claude) once to record one.
+        </div>
+      ) : (
+      <>
       <SectionLabel>Parameters</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
         {spec.params.map((f) => (
           <SpecField key={f.key} f={f} bag={marketParams} onSet={setMarketParam} />
         ))}
       </div>
+      </>
+      )}
       <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)", fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>
         agents → market → observation
       </div>
@@ -237,6 +328,12 @@ function SchedulerPanel() {
   const setRunName = useStore((s) => s.setRunName);
   const policyCfg = useStore((s) => s.policyCfg);
   const setPolicyCfg = useStore((s) => s.setPolicyCfg);
+  const sysPolicy = useStore((s) => s.sysPolicy);
+  const setSysPolicy = useStore((s) => s.setSysPolicy);
+  const sysMemory = useStore((s) => s.sysMemory);
+  const setSysMemory = useStore((s) => s.setSysMemory);
+  const sysReflection = useStore((s) => s.sysReflection);
+  const setSysReflection = useStore((s) => s.setSysReflection);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
@@ -245,6 +342,12 @@ function SchedulerPanel() {
       <Row label="reflect every" hint="rounds"><Num value={reflectEvery} min={1} step={1} onChange={setReflectEvery} /></Row>
       <Row label="seed" hint="determinism"><Num value={seed} step={1} onChange={setSeed} /></Row>
       <Row label="run name" hint="trace id"><Text value={runName} onChange={setRunName} /></Row>
+
+      <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+      <SectionLabel>System · agent defaults</SectionLabel>
+      <Seg value={((sysPolicy as "claude" | "replay") || "replay")} options={POLICY_OPTS} onChange={setSysPolicy} />
+      <Row label="memory" hint="all agents"><Enum value={sysMemory} options={MEMORY_KINDS} onChange={setSysMemory} /></Row>
+      <Row label="reflection" hint="all agents"><Enum value={sysReflection} options={REFLECTION_KINDS} onChange={setSysReflection} /></Row>
 
       <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
       <SectionLabel>LLM policy · claude agents only</SectionLabel>
@@ -262,20 +365,28 @@ function SchedulerPanel() {
 function RecorderPanel() {
   const mech = useStore((s) => s.mech);
   const spec = getMarket(mech);
-  const rows = [
-    { label: "headline series", value: spec.benchmarks.length ? "price + benchmarks" : "price", hint: "plot" },
-    { label: "benchmarks", value: spec.benchmarks.join(", ") || "—", hint: "computed" },
-    { label: "export", value: "trace.json", hint: "file" },
-  ];
+  const questionTemplate = useStore((s) => s.questionTemplate);
+  const setQuestionTemplate = useStore((s) => s.setQuestionTemplate);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-      {rows.map((r, i) => (
-        <Row key={i} label={r.label} hint={r.hint}>
-          <div style={{ ...inputStyle, background: "#f4f6f3" }}>{r.value}</div>
-        </Row>
-      ))}
+      <SectionLabel>Question · posed each round</SectionLabel>
+      <Row label="prompt template" hint="claude agents · blank = market default">
+        <Area value={questionTemplate} placeholder={spec.defaultQuestion} rows={5} onChange={setQuestionTemplate} />
+      </Row>
+      <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", lineHeight: 1.55, marginTop: -6 }}>
+        The ask posed to each LLM agent; its tool answer is its action. Blank → the market's built-in
+        question (shown as the placeholder above), sent alongside the input below. A custom template
+        replaces the whole user turn; {"{placeholders}"} are filled per agent each round:
+        <div style={{ marginTop: 4, color: "var(--green-d)" }}>{"{round} {persona} {observation} {private_state} {memory}"}</div>
+        <div style={{ marginTop: 2 }}>+ any observation field (e.g. {"{price} {profit}"}).</div>
+      </div>
+
+      <SectionLabel>Input · seen each round</SectionLabel>
+      <pre style={{ ...inputStyle, background: "#f4f6f3", color: "var(--muted)", margin: 0, whiteSpace: "pre-wrap", fontSize: 10.5, lineHeight: 1.5 }}>
+        {spec.defaultInput}
+      </pre>
       <div style={{ paddingTop: 12, borderTop: "1px solid var(--border)", fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>
-        recorder → ↻ next round
+        input + question → ↻ next round
       </div>
     </div>
   );
@@ -331,12 +442,13 @@ function CohortPanel({ id }: { id: string }) {
       </div>
 
       <Row label="name" hint="label"><Text value={co.name} onChange={(v) => updateCohort(co.id, { name: v })} /></Row>
-      <Row label="count ×" hint="int"><Num value={co.n} min={1} step={1} onChange={(n) => updateCohort(co.id, { n: Math.max(1, Math.round(n)) })} /></Row>
-      <Row label="persona / prompt" hint="text"><Area value={co.persona} onChange={(v) => updateCohort(co.id, { persona: v })} /></Row>
+      <Row label="generates →N" hint="agents into roster"><Num value={co.n} min={1} step={1} onChange={(n) => updateCohort(co.id, { n: Math.max(1, Math.round(n)) })} /></Row>
+      <Row label="persona / prompt" hint="default"><Area value={co.persona} onChange={(v) => updateCohort(co.id, { persona: v })} /></Row>
+      <Row label="system prompt" hint="blank = market default"><Area value={co.system_prompt ?? ""} onChange={(v) => updateCohort(co.id, { system_prompt: v })} /></Row>
 
       <SectionLabel>Decision policy</SectionLabel>
       <Seg
-        value={((co.policy as "deterministic" | "claude") || "deterministic")}
+        value={((co.policy as "claude" | "replay") || "replay")}
         options={POLICY_OPTS}
         onChange={(p) => updateCohort(co.id, { policy: p })}
       />
@@ -347,7 +459,7 @@ function CohortPanel({ id }: { id: string }) {
       >
         <span style={{ flex: "none", color: "var(--indigo)" }}>⌘</span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          System prompt: <span style={{ color: "var(--ink)" }}>{spec.systemPrompt(co)}</span>
+          System prompt: <span style={{ color: "var(--ink)" }}>{co.system_prompt || spec.systemPrompt(co)}</span>
         </span>
         <span style={{ flex: "none", color: "var(--indigo)", fontWeight: 600 }}>view ▸</span>
       </div>
@@ -376,11 +488,11 @@ function CohortPanel({ id }: { id: string }) {
         onClick={() => removeCohort(co.id)}
         style={{ marginTop: 4, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "#a8443c", background: "#fbf1f0", border: "1px solid #ecd5d2", borderRadius: 9, padding: "9px 12px", cursor: "pointer" }}
       >
-        Delete agent
+        Delete generator
       </button>
 
       <div style={{ paddingTop: 12, borderTop: "1px solid var(--border)", fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>
-        agent → market (synchronous settlement)
+        generator → samples →{co.n} agents into the roster
       </div>
     </div>
   );

@@ -2,8 +2,10 @@ import { spawn } from "node:child_process";
 import readline from "node:readline";
 import { randomUUID } from "node:crypto";
 import YAML from "yaml";
-import { PYTHON, ENGINE_DIR } from "./config.js";
+import { PYTHON, ENGINE_DIR, childEnv } from "./config.js";
 import { listPresets, listTraces, traceIdForRun, tracePathForRun } from "./files.js";
+
+const IDLE_MS = 180000; // kill an engine child that emits no events for 3 min (e.g. a hung user mechanism)
 
 function send(ws, msg) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
@@ -31,10 +33,25 @@ function startRun(ws, config) {
   const child = spawn(
     PYTHON,
     ["-m", "macroweaver", "stream", "--config", "-", "--out", tracePath],
-    { cwd: ENGINE_DIR, env: { ...process.env } },
+    // SECURITY (MVV): childEnv points at MW_MECHANISMS_DIR and scrubs the API key when the run
+    // uses a user mechanism (non-built-in market.type), so user Python can't reach the key.
+    { cwd: ENGINE_DIR, env: childEnv(config?.market?.type) },
   );
   ws._child = child;
   ws._runId = runId;
+
+  // idle-timeout: a hung mechanism (e.g. infinite loop in settle()) emits nothing — kill it.
+  let idleTimer = null;
+  const clearIdle = () => { if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; } };
+  const bumpIdle = () => {
+    clearIdle();
+    idleTimer = setTimeout(() => {
+      if (child._dead) return;
+      send(ws, { type: "run.error", runId, message: "engine idle timeout (no events for 180s) — killed" });
+      killChild(ws);
+    }, IDLE_MS);
+  };
+  bumpIdle();
 
   send(ws, { type: "run.started", runId });
 
@@ -56,6 +73,7 @@ function startRun(ws, config) {
   let sawDone = false;
   rl.on("line", (line) => {
     if (child._dead) return; // a superseded/cancelled run must not bleed into the next one
+    bumpIdle();              // progress → reset the idle-timeout
     line = line.trim();
     if (!line) return;
     let ev;
@@ -89,6 +107,7 @@ function startRun(ws, config) {
     send(ws, { type: "run.error", runId, message: `spawn failed: ${e.message}` });
   });
   child.on("close", (code, signal) => {
+    clearIdle();
     // only clear the pointer if it still refers to THIS child — a newer run may have
     // already claimed ws._child, and nulling it would orphan that live process.
     if (ws._child === child) ws._child = null;

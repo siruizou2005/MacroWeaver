@@ -1,4 +1,4 @@
-"""The Agent Decision interface — ClaudePolicy vs DeterministicPolicy live behind this."""
+"""The Agent Decision interface — ClaudePolicy (live) and ReplayPolicy (offline) live behind this."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ __all__ = ["Decision", "DecisionPolicy"]
 
 
 class DecisionPolicy(ABC):
-    """One method. Implementations: DeterministicPolicy (golden), ClaudePolicy (live)."""
+    """One method. Implementations: ClaudePolicy (live LLM), ReplayPolicy (replay a recorded trace)."""
 
     deterministic: bool = True
 
@@ -27,5 +27,6 @@ class DecisionPolicy(ABC):
         rng,
         decision_schema,
         parse_decision,
+        system_prompt: str = "",
     ) -> Decision:
         ...

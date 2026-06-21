@@ -20,8 +20,48 @@ function Section({ kicker, title, children }: { kicker: string; title: string; c
 const markets = [
   { name: "Oligopoly Pricing", type: "fish_calvano", body: "Pricing LLMs on a logit-demand market. Watch price drift from the competitive Bertrand level toward the monopoly price — algorithmic collusion with no communication." },
   { name: "EconAgent · Macro", type: "econagent", body: "Household agents make work/consume decisions that aggregate into wages, prices, employment and inflation (CPI)." },
-  { name: "TwinMarket · CLOB", type: "clob", body: "A central limit order book where fundamentalist, momentum and noise traders post orders; traded price tracks fair value." },
 ];
+
+const preStyle = {
+  fontFamily: mono, fontSize: 12.5, lineHeight: 1.55, color: "var(--green-d)",
+  background: "var(--green-l)", border: "1px solid var(--border)", borderRadius: 10,
+  padding: "16px 18px", overflowX: "auto" as const, marginTop: 16, whiteSpace: "pre" as const,
+};
+
+const MECHANISM_TEMPLATE = `from macroweaver.market import (
+    Market, register, AgentAction, Outcome, MarketObservation,
+)
+from pydantic import BaseModel
+
+class MyDecision(BaseModel):
+    bid: float
+
+@register("my_mechanism")          # <- this name becomes the preset's market.type
+class MyMarket(Market):
+    def init_world(self, params, agents, rng):
+        return {"last": 0.0}
+
+    def build_observation(self, state, agent_id, round_no):
+        return MarketObservation(public={"last": state["last"]}, private={})
+
+    def settle(self, actions, state, round_no, rng):           # pure: draw randomness from rng
+        bids = [a.payload.get("bid", 0.0) for a in actions]
+        clearing = sum(bids) / max(1, len(bids))
+        outs = [Outcome(a.agent_id, {"bid": a.payload.get("bid", 0.0),
+                                     "clearing": clearing}) for a in actions]
+        return outs, {**state, "last": clearing}
+
+    def public_series(self, state, outcomes, round_no):
+        return {"clearing": state["last"]}
+
+    def benchmarks(self, params):
+        return {}
+
+    def decision_schema(self):
+        return MyDecision
+
+    def parse_decision(self, raw, agent_id):
+        return AgentAction(agent_id, "bid", {"bid": float(raw["bid"])})`;
 
 export function Docs() {
   const nav = useStore((s) => s.nav);
@@ -58,11 +98,36 @@ export function Docs() {
         </div>
       </Section>
 
-      <Section kicker="Determinism" title="Every run is byte-exact reproducible">
+      <Section kicker="Extend" title="Author your own mechanism">
         <p style={{ margin: 0 }}>
-          A deterministic run serializes to a self-contained <Code>trace.json</Code> — no API jitter on stage.
-          Without an API key the engine falls back to deterministic heuristics, so every demo runs offline and
-          still produces the curve. Set <Code>ANTHROPIC_API_KEY</Code> to let real LLM agents drive decisions instead.
+          The market is the one swappable block, and it's open. Write a Python class that subclasses{" "}
+          <Code>Market</Code> and implement the seven hooks — <Code>init_world</Code>, <Code>build_observation</Code>,{" "}
+          <Code>settle</Code>, <Code>public_series</Code>, <Code>benchmarks</Code>, <Code>decision_schema</Code> and{" "}
+          <Code>parse_decision</Code> — then decorate it <Code>@register("my_mechanism")</Code>. Save the draft from the
+          console (or drop the file in <Code>mechanisms/</Code>) and reference its name as a preset's <Code>market.type</Code>.
+          Everything else — the agent pipeline, the Q&amp;A record, replay — is shared for free.
+        </p>
+        <pre style={preStyle}>{MECHANISM_TEMPLATE}</pre>
+        <p style={{ margin: "18px 0 0" }}>
+          <strong style={{ color: "var(--ink)" }}>settle() must be pure.</strong> Draw all randomness from the passed-in{" "}
+          <Code>rng</Code> — never <Code>random</Code> seeded yourself, nor wall-clock time — so a recorded run replays faithfully.
+        </p>
+        <p style={{ margin: "16px 0 0" }}>
+          <strong style={{ color: "var(--ink)" }}>Sandbox.</strong> Mechanisms run in an isolated subprocess and may import only{" "}
+          <Code>numpy · math · statistics · random · dataclasses · typing · pydantic · collections · itertools · functools</Code>{" "}
+          and the <Code>macroweaver.market</Code> types. <Code>os</Code>, <Code>subprocess</Code>, file I/O, <Code>eval</Code>/<Code>exec</Code>{" "}
+          and network libraries are blocked at load time. A mechanism has no network access and no API key — it cannot call an LLM,
+          so it is exercised via record + replay. This is local-trust isolation for a single-user tool, not a defense against
+          deliberately malicious code: only run drafts you understand.
+        </p>
+      </Section>
+
+      <Section kicker="Determinism" title="Record once, replay forever">
+        <p style={{ margin: 0 }}>
+          Every run serializes to a self-contained <Code>trace.json</Code> — no API jitter on stage. There is no
+          algorithmic stand-in: record a run once with live LLM agents (<Code>ANTHROPIC_API_KEY</Code>), then{" "}
+          <strong style={{ color: "var(--ink)" }}>replay</strong> that trace offline forever — the kernel re-runs the
+          market with the same seed, so the whole event stream regenerates byte-for-byte.
         </p>
       </Section>
 

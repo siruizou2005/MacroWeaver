@@ -52,7 +52,7 @@ const POSTS: Post[] = [
     body: [
       { p: "MacroWeaver is built on one fixed loop — Population·Agents → Market → Observation → Scheduler → Recorder → write-back — where the Market is the only block you swap. The agent pipeline (profile, perception, memory, decision, reflection) is identical across markets; heterogeneity lives entirely in the cohort config." },
       { h: "Three markets ship today" },
-      { p: "Oligopoly Pricing reproduces algorithmic collusion on logit demand. EconAgent · Macro drives wages, prices and inflation from household work/consume decisions. TwinMarket · CLOB runs a continuous limit-order book with fundamentalist, momentum and noise traders." },
+      { p: "Oligopoly Pricing reproduces algorithmic collusion on logit demand. EconAgent · Macro drives wages, prices and inflation from household work/consume decisions." },
       { h: "Why a single kernel" },
       { p: "Swapping only the market isolates the variable under study. If the same agents produce collusion in one market and realistic inflation dynamics in another, the result is a property of the agent behavior, not of bespoke per-paper scaffolding." },
     ],
@@ -69,8 +69,8 @@ const POSTS: Post[] = [
       "Every run serializes to a deterministic trace. Scrub the timeline and each agent's one-line reasoning note tells you exactly what it was thinking that round.",
     body: [
       { p: "A deterministic run is byte-exact reproducible and serializes to a self-contained trace.json — no API jitter on stage. The replay view lets you scrub the run round by round, watch the headline series track its benchmarks, and read each agent's reasoning note for that round." },
-      { h: "Offline by default" },
-      { p: "Without an API key the engine falls back to deterministic heuristics, so every demo runs offline and still produces the curve. Set ANTHROPIC_API_KEY to let live LLM agents drive decisions instead — the same pipeline, now with generated reasoning." },
+      { h: "Record once, replay offline" },
+      { p: "Record a run once with live LLM agents (ANTHROPIC_API_KEY), then replay that trace offline forever — the kernel re-runs the market with the same seed, so it regenerates byte-for-byte. Same pipeline, no API jitter on stage." },
       { h: "From console to replay" },
       { p: "Open the console, pick a preset, tune the rules, and run. The engine streams each round live; when it finishes you land in replay, where the whole story is yours to inspect." },
     ],

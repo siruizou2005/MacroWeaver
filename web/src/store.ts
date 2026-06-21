@@ -10,21 +10,36 @@ import { loadDefaults } from "./lib/defaults";
 const MECH_TO_TYPE: Record<Mech, string> = {
   fish: "fish_calvano",
   econ: "econagent",
-  clob: "clob",
 };
 const TYPE_TO_MECH: Record<string, Mech> = {
   fish_calvano: "fish",
   econagent: "econ",
-  clob: "clob",
 };
 // shipped preset file id per market (differs from the engine market.type)
 const PRESET_FILE: Record<Mech, string> = {
   fish: "fish_calvano",
   econ: "econagent_macro",
-  clob: "clob_twinmarket",
 };
 
 const DEFAULT_POLICY: PolicyCfg = { model: "claude-opus-4-8", use_cache: true, max_concurrency: 5 };
+
+// One individual agent a cohort expands into, with its engine-sampled traits (EDSL-style bag).
+// In materialised mode the row is also the editable definition: optional per-agent overrides on
+// top of the archetype cohort (persona/policy/memory/reflection/initial_state).
+export interface AgentRow {
+  id: string;
+  cohort: string;
+  cohort_name: string;
+  name: string;
+  traits: Record<string, any>;
+  n?: number;                // ×N byte-identical clones (default 1)
+  persona?: string;
+  system_prompt?: string;    // per-agent system-prompt override (blank → cohort/market default)
+  policy?: string;
+  memory?: string;
+  reflection?: string;
+  initial_state?: Record<string, any>;
+}
 
 // Live run accumulator. `cols` holds every numeric headline series the market emits
 // (mean_price, collusion_index, inflation, return_pct, …) so any market streams faithfully
@@ -51,11 +66,16 @@ function buildLiveTrace(s: MWState): Trace {
     beliefs: a?.beliefs,
     realized: a?.realized,
     action: a?.action,
+    question: a?.question,                       // generic Q&A (live, from agent_record events)
+    result_description: a?.result_description,
   }));
   // only the latest frame carries agents (live thinking); earlier frames are placeholders
   const rounds = ls.round.map((rn, i) =>
     i === T - 1 ? { round: rn, news: s.liveNews, agents } : { round: rn, news: "", agents: [] },
   );
+  // enrich the per-agent header from the configured roster/agents so the live Q&A panel can
+  // show name/persona/system_prompt/traits even before the final trace is written.
+  const metaFor = (id: string) => (s.agents || s.roster || []).find((x) => x.id === id);
   return {
     schema_version: 0,
     run_name: s.runName,
@@ -64,7 +84,16 @@ function buildLiveTrace(s: MWState): Trace {
     granularity: s.granularity,
     T,
     benchmarks: s.liveBenchmarks || {},
-    agents: agents.map((a) => ({ id: a.id, cohort: "", name: a.id, persona: "" })),
+    agents: agents.map((a) => {
+      const m = metaFor(a.id);
+      return {
+        id: a.id, cohort: m?.cohort || "",
+        name: (m?.traits && m.traits.name) || m?.name || a.id,
+        persona: m?.persona || "",
+        ...(m?.system_prompt ? { system_prompt: m.system_prompt } : {}),
+        ...(m?.traits || {}),
+      };
+    }),
     series: { round: ls.round, by_agent_price: ls.by_agent_price, ...ls.cols },
     rounds: rounds as any,
     metrics: {},
@@ -100,8 +129,8 @@ function pathToScreen(path: string): Screen {
   if (path.startsWith("/blog")) return "blog";
   return "landing";
 }
-const MECH_TO_SLUG: Record<string, string> = { fish: "oligopoly-pricing", econ: "econagent-macro", clob: "twinmarket-clob", blank: "new" };
-const SLUG_TO_MECH: Record<string, Mech | "blank"> = { "oligopoly-pricing": "fish", "econagent-macro": "econ", "twinmarket-clob": "clob", "new": "blank" };
+const MECH_TO_SLUG: Record<string, string> = { fish: "oligopoly-pricing", econ: "econagent-macro", blank: "new" };
+const SLUG_TO_MECH: Record<string, Mech | "blank"> = { "oligopoly-pricing": "fish", "econagent-macro": "econ", "new": "blank" };
 const LIB_TABS = new Set<string>(["traces", "markets", "schema", "settings"]);
 type ConsoleSub =
   | { kind: "builtin"; id: Mech | "blank" }
@@ -139,6 +168,9 @@ export interface MWState {
   node: string | null; // "market" | "observation" | "scheduler" | "recorder" | "shock" | "cohort:<id>"
   view: CanvasView;
   mech: Mech;
+  // when set, the world runs a user-authored Python mechanism (market.type = customType); `mech`
+  // is just the UI scaffold then. null = a built-in market (fish/econ).
+  customType: string | null;
   preset: string | null;
   presetKind: "builtin" | "config" | "template" | null;
 
@@ -152,12 +184,21 @@ export interface MWState {
   reflectEvery: number;
   shock: ShockConfig | null;
   policyCfg: PolicyCfg;
+  // system-level agent defaults (no longer per-agent): one decision policy + memory + reflection
+  // applied to every agent at build time. Edited in the System settings panel.
+  sysPolicy: string;
+  sysMemory: string;
+  sysReflection: string;
+  // global user-message template posed to each LLM agent every round (blank = market default).
+  // Authored in the "Question" node; flows to config.policy.question_template.
+  questionTemplate: string;
   expanded: string | null; // cohort id whose pipeline drawer is open
   layers: { info: boolean; news: boolean };
 
   // connection + library
   connected: boolean;
   presets: PresetMeta[];
+  mechanisms: { id: string }[]; // user-authored Python mechanisms (market plugins)
   traces: TraceMeta[];
   savedConfigs: SavedConfigMeta[];
   publishedTemplates: TemplateMeta[]; // configs published to Markets
@@ -175,11 +216,19 @@ export interface MWState {
   liveTrace: Trace | null; // trace-shaped view of the in-progress run (drives Replay while running)
   metrics: Record<string, any>;
 
+  // roster: cohorts expanded into individual agents + their (engine-sampled) traits
+  roster: AgentRow[];
+  rosterKey: string;       // config signature the current roster was sampled for
+  rosterLoading: boolean;
+  // materialised, individually-editable agents (null = pure cohort/generator mode)
+  agents: AgentRow[] | null;
+
   // replay
   traceId: string | null;
   trace: Trace | null;
   round: number;
   playing: boolean;
+  selectedAgentId: string | null;   // replay aside: which agent's Q&A panel is open (null = all-agents overview)
 
   // ws internals
   _ws: WebSocket | null;
@@ -197,6 +246,8 @@ export interface MWState {
   setView: (v: CanvasView) => void;
   setLibTab: (t: LibTab) => void;
   setMech: (m: Mech) => void;
+  refreshMechanisms: () => void;
+  openMechanism: (type: string) => void;
   addCohort: () => void;
   removeCohort: (id: string) => void;
   updateCohort: (id: string, patch: Partial<Cohort>) => void;
@@ -209,8 +260,22 @@ export interface MWState {
   setReflectEvery: (n: number) => void;
   setShock: (patch: Partial<ShockConfig> | null) => void;
   setPolicyCfg: (patch: Partial<PolicyCfg>) => void;
+  setSysPolicy: (p: string) => void;
+  setSysMemory: (m: string) => void;
+  setSysReflection: (r: string) => void;
+  setQuestionTemplate: (s: string) => void;
   applyConfig: (cfg: any, preset?: string | null) => void;
   toggleConfigView: () => void;
+  fetchRoster: () => void;
+  materializeRoster: () => void;
+  updateAgent: (id: string, patch: Partial<AgentRow>) => void;
+  updateAgentTrait: (id: string, key: string, value: any) => void;
+  addAgentTrait: (id: string) => void;
+  removeAgentTrait: (id: string, key: string) => void;
+  renameAgentTrait: (id: string, oldKey: string, newKey: string) => void;
+  removeAgent: (id: string) => void;
+  addAgent: (archetypeCohortId?: string) => void;
+  revertToCohorts: () => void;
   refreshConfigs: () => void;
   saveCurrentConfig: (name?: string) => Promise<string | null>;
   loadSavedConfig: (id: string) => Promise<void>;
@@ -235,26 +300,37 @@ export interface MWState {
   stepFwd: () => void;
   stepBack: () => void;
   scrub: (r: number) => void;
+  selectAgent: (id: string | null) => void;
+}
+
+// The editable agent list: the explicit `agents` if it's been materialised, otherwise the
+// sampled roster frozen into editable rows (materialise-on-edit). Keeps unedited presets in
+// cohort mode so a golden replay reproduces byte-exact.
+function matAgents(s: MWState): AgentRow[] {
+  return s.agents ?? s.roster.map((a) => ({ ...a, traits: { ...a.traits } }));
 }
 
 export function buildConfig(s: MWState) {
   const mech = s.mech;
   const spec = getMarket(mech);
-  return {
+  const cfg: any = {
     seed: s.seed,
     rounds: s.rounds,
     run_name: s.runName || `${mech}_console`,
-    market: { type: MECH_TO_TYPE[mech], params: { ...s.marketParams } },
+    // a user mechanism overrides the market type; its params come from the .py defaults (we send none).
+    market: { type: s.customType || MECH_TO_TYPE[mech], params: s.customType ? {} : { ...s.marketParams } },
     cohorts: s.cohorts.map((c) => ({
       id: c.id,
       name: c.name,
       n: c.n,
       persona: c.persona,
-      policy: c.policy || "deterministic",
+      ...(c.system_prompt ? { system_prompt: c.system_prompt } : {}),
+      // policy/memory/reflection are system-level now (uniform across every agent), not per-cohort.
+      policy: s.sysPolicy,
       profile: c.profile || {},
       initial_state: c.initial_state || {},
-      memory: c.memory || spec.defaultMemory,
-      reflection: c.reflection || spec.defaultReflection,
+      memory: s.sysMemory,
+      reflection: s.sysReflection,
     })),
     // Only `news` and `shock` are engine-functional; the rest are the visual
     // world layers and are carried through faithfully but ignored by the engine.
@@ -268,8 +344,41 @@ export function buildConfig(s: MWState) {
       shock: s.shock,
     },
     scheduler: { granularity: s.granularity, reflect_every: Math.max(1, s.reflectEvery) },
-    policy: { ...s.policyCfg },
+    // global question template → policy.question_template (engine fills its {placeholders} per round).
+    policy: { ...s.policyCfg, ...(s.questionTemplate ? { question_template: s.questionTemplate } : {}) },
   };
+  // offline (replay) policy → point the engine at the BUILT-IN market's recorded golden so a
+  // no-key console run replays it. User mechanisms have no golden → they need a live (claude) run.
+  if (!s.customType && s.sysPolicy === "replay" && PRESET_FILE[mech]) {
+    cfg.replay_trace_path = `traces/golden/${PRESET_FILE[mech]}.trace.json`;
+  }
+  // explicit (materialised) per-agent roster — authoritative when present; cohorts stay as
+  // archetypes. Only emit the per-agent override fields that are actually set.
+  if (s.agents && s.agents.length) {
+    cfg.agents = s.agents.map((a) => ({
+      id: a.id,
+      cohort: a.cohort || "agents",
+      ...(a.n && a.n > 1 ? { n: a.n } : {}),
+      traits: { ...(a.traits || {}), name: (a.traits && a.traits.name) ?? a.name },
+      ...(a.persona !== undefined ? { persona: a.persona } : {}),
+      ...(a.system_prompt ? { system_prompt: a.system_prompt } : {}),
+      // policy/memory/reflection are system-level now — agents inherit them from their cohort.
+      ...(a.initial_state ? { initial_state: a.initial_state } : {}),
+    }));
+    // every cohort an agent references must exist carrying the system settings, so memory /
+    // reflection / policy reach the agent even in a from-scratch (cohort-less) world.
+    const have = new Set(cfg.cohorts.map((c: any) => c.id));
+    for (const a of cfg.agents) {
+      if (!have.has(a.cohort)) {
+        have.add(a.cohort);
+        cfg.cohorts.push({
+          id: a.cohort, name: a.cohort || "Agents", n: 0, persona: "",
+          policy: s.sysPolicy, profile: {}, initial_state: {}, memory: s.sysMemory, reflection: s.sysReflection,
+        });
+      }
+    }
+  }
+  return cfg;
 }
 
 export const useStore = create<MWState>((set, get) => ({
@@ -277,6 +386,7 @@ export const useStore = create<MWState>((set, get) => ({
   node: "market",
   view: "arena",
   mech: "fish",
+  customType: null,
   preset: null,
   presetKind: null,
 
@@ -289,11 +399,16 @@ export const useStore = create<MWState>((set, get) => ({
   reflectEvery: getMarket("fish").reflectEvery,
   shock: null,
   policyCfg: { ...DEFAULT_POLICY },
+  sysPolicy: "replay",
+  sysMemory: getMarket("fish").defaultMemory,
+  sysReflection: getMarket("fish").defaultReflection,
+  questionTemplate: "",
   expanded: null,
   layers: { info: true, news: false },
 
   connected: false,
   presets: [],
+  mechanisms: [],
   traces: [],
   savedConfigs: [],
   publishedTemplates: [],
@@ -310,10 +425,16 @@ export const useStore = create<MWState>((set, get) => ({
   liveTrace: null,
   metrics: {},
 
+  roster: [],
+  rosterKey: "",
+  rosterLoading: false,
+  agents: null,
+
   traceId: null,
   trace: null,
   round: 0,
   playing: false,
+  selectedAgentId: null,
 
   _ws: null,
   _timer: null,
@@ -427,12 +548,17 @@ export const useStore = create<MWState>((set, get) => ({
       marketParams: defaultParams(mech),
       // blank = a true from-0 start: no cohorts, the user picks a market and adds them
       cohorts: blank ? [] : spec.starterCohorts(),
+      agents: null,
       seed: blank ? d.seed : 7,
       runName: blank ? "untitled" : spec.type,
       granularity: spec.granularity,
       reflectEvery: spec.reflectEvery,
       shock: null,
       policyCfg: { model: d.model, use_cache: d.useCache, max_concurrency: d.maxConcurrency },
+      sysPolicy: "replay",
+      sysMemory: spec.defaultMemory,
+      sysReflection: spec.defaultReflection,
+      customType: null,
       layers: { info: true, news: true },
       liveSeries: emptySeries(),
       liveRound: 0,
@@ -448,6 +574,36 @@ export const useStore = create<MWState>((set, get) => ({
         })
         .catch(() => {});
     }
+  },
+
+  refreshMechanisms: () => {
+    fetch("/api/mechanisms")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: { id: string }[]) => set({ mechanisms: list || [] }))
+      .catch(() => {});
+  },
+
+  // enter a from-scratch console world running a user-authored Python mechanism. `mech` stays
+  // "fish" purely as the UI scaffold; market.type comes from customType. No golden trace exists,
+  // so it defaults to a live (claude) run — record once, then it can be replayed.
+  openMechanism: (type) => {
+    const d = loadDefaults();
+    get().pause();
+    set({
+      screen: "console", preset: type, presetKind: "builtin",
+      mech: "fish", customType: type,
+      node: "market", view: "arena", expanded: null, showConfig: false,
+      rounds: getMarket("fish").defaultRounds,
+      marketParams: {},
+      cohorts: [], agents: null, roster: [], rosterKey: "",
+      seed: d.seed, runName: type,
+      granularity: "round", reflectEvery: 4, shock: null,
+      policyCfg: { model: d.model, use_cache: d.useCache, max_concurrency: d.maxConcurrency },
+      sysPolicy: "claude", sysMemory: "notepad", sysReflection: "insight",
+      layers: { info: true, news: false },
+      liveSeries: emptySeries(), liveRound: 0, metrics: {},
+    });
+    get().refreshConfigs();
   },
 
   selectNode: (n) => set({ node: n }),
@@ -469,6 +625,11 @@ export const useStore = create<MWState>((set, get) => ({
       granularity: spec.granularity,
       reflectEvery: spec.reflectEvery,
       cohorts: blank ? [] : spec.starterCohorts(),
+      agents: null,
+      roster: [], rosterKey: "",   // force re-sample for the new market
+      customType: null,            // switching to a built-in market clears any custom mechanism
+      sysMemory: spec.defaultMemory,
+      sysReflection: spec.defaultReflection,
       shock: null,
       node: "market",
       expanded: null,
@@ -511,6 +672,10 @@ export const useStore = create<MWState>((set, get) => ({
         : { shock: { round: 24, kind: "cost_jump", magnitude: 0.1, ...(s.shock || {}), ...patch } },
     ),
   setPolicyCfg: (patch) => set((s) => ({ policyCfg: { ...s.policyCfg, ...patch } })),
+  setSysPolicy: (p) => set({ sysPolicy: p }),
+  setSysMemory: (m) => set({ sysMemory: m }),
+  setSysReflection: (r) => set({ sysReflection: r }),
+  setQuestionTemplate: (str) => set({ questionTemplate: str }),
   toggleConfigView: () => set((s) => ({ showConfig: !s.showConfig })),
 
   // Map an engine Config object into the editable store (preset fetch + saved-config load).
@@ -522,9 +687,23 @@ export const useStore = create<MWState>((set, get) => ({
     const lay = cfg.layers || {};
     set((s) => ({
       mech,
+      // a saved config / template may carry a user mechanism type unknown to the built-in map.
+      customType: TYPE_TO_MECH[cfg.market.type] ? null : cfg.market.type,
       preset: preset !== undefined ? preset : s.preset,
       marketParams: { ...defaultParams(mech), ...(cfg.market.params || {}) },
       cohorts: (cfg.cohorts && cfg.cohorts.length ? cfg.cohorts : spec.starterCohorts()) as Cohort[],
+      // a saved config may carry an explicit materialised roster
+      agents: cfg.agents && cfg.agents.length
+        ? cfg.agents.map((a: any) => ({
+            id: a.id, cohort: a.cohort || "",
+            cohort_name: cfg.cohorts?.find((c: any) => c.id === a.cohort)?.name || a.cohort || "",
+            name: (a.traits && a.traits.name) || a.id, traits: a.traits || {}, n: a.n,
+            persona: a.persona, system_prompt: a.system_prompt,
+            policy: a.policy, memory: a.memory, reflection: a.reflection,
+            initial_state: a.initial_state,
+          }))
+        : null,
+      roster: [], rosterKey: "",
       rounds: cfg.rounds ?? spec.defaultRounds,
       seed: cfg.seed ?? 0,
       runName: cfg.run_name || spec.type,
@@ -538,6 +717,11 @@ export const useStore = create<MWState>((set, get) => ({
         use_cache: cfg.policy?.use_cache !== false,
         max_concurrency: Number(cfg.policy?.max_concurrency ?? DEFAULT_POLICY.max_concurrency),
       },
+      questionTemplate: cfg.policy?.question_template || "",
+      // system-level agent defaults: pull from the first cohort/agent the config carries.
+      sysPolicy: cfg.cohorts?.[0]?.policy || cfg.agents?.[0]?.policy || "replay",
+      sysMemory: cfg.cohorts?.[0]?.memory || cfg.agents?.[0]?.memory || spec.defaultMemory,
+      sysReflection: cfg.cohorts?.[0]?.reflection || cfg.agents?.[0]?.reflection || spec.defaultReflection,
       layers: {
         info: lay.observation !== false,
         news: lay.news !== false,
@@ -546,6 +730,80 @@ export const useStore = create<MWState>((set, get) => ({
       expanded: null,
     }));
   },
+
+  fetchRoster: () => {
+    const s = get();
+    if (s.agents) return;   // materialised mode: the editable `agents` list IS the roster
+    const config = buildConfig(s);
+    // signature = seed + market type/params + cohort {id,n,profile,initial_state}: the inputs
+    // that determine the engine-sampled roster. Skip the round-trip if it hasn't changed.
+    const key = JSON.stringify([config.seed, config.market,
+      s.cohorts.map((c) => [c.id, c.n, c.profile, c.initial_state])]);
+    if (key === s.rosterKey && s.roster.length) return;
+    set({ rosterLoading: true });
+    fetch("/api/roster", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config }),
+    })
+      .then((r) => (r.ok ? r.json() : { agents: [] }))
+      .then((d: { agents?: AgentRow[] }) => set({ roster: d.agents || [], rosterKey: key, rosterLoading: false }))
+      .catch(() => set({ rosterLoading: false }));
+  },
+
+  // freeze the current sampled roster into an explicit, individually-editable agent list
+  materializeRoster: () => set((s) => ({ agents: s.roster.map((a) => ({ ...a, traits: { ...a.traits } })) })),
+  // Agent edits are MATERIALISE-ON-EDIT: an unedited preset stays in cohort mode (so a golden
+  // replay reproduces byte-exact, since the engine re-samples instead of round-tripping rounded
+  // traits); the FIRST edit freezes the sampled roster into the explicit `agents` list, then edits it.
+  updateAgent: (id, patch) =>
+    set((s) => ({ agents: matAgents(s).map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
+  updateAgentTrait: (id, key, value) =>
+    set((s) => ({ agents: matAgents(s).map((a) => (a.id === id ? { ...a, traits: { ...a.traits, [key]: value } } : a)) })),
+  addAgentTrait: (id) =>
+    set((s) => ({ agents: matAgents(s).map((a) => {
+      if (a.id !== id) return a;
+      let k = "trait", i = 1;
+      while (k in (a.traits || {})) k = `trait_${i++}`;
+      return { ...a, traits: { ...a.traits, [k]: "" } };
+    }) })),
+  removeAgentTrait: (id, key) =>
+    set((s) => ({ agents: matAgents(s).map((a) => {
+      if (a.id !== id) return a;
+      const t = { ...a.traits }; delete t[key];
+      return { ...a, traits: t };
+    }) })),
+  renameAgentTrait: (id, oldKey, newKey) =>
+    set((s) => ({ agents: matAgents(s).map((a) => {
+      if (a.id !== id || oldKey === newKey || !newKey || newKey in (a.traits || {})) return a;
+      const t: Record<string, any> = {};
+      for (const [k, v] of Object.entries(a.traits || {})) t[k === oldKey ? newKey : k] = v;
+      return { ...a, traits: t };
+    }) })),
+  removeAgent: (id) =>
+    set((s) => ({
+      agents: matAgents(s).filter((a) => a.id !== id),
+      node: s.node === `agent:${id}` ? "market" : s.node,
+    })),
+  addAgent: (archetype) =>
+    set((s) => {
+      const base = matAgents(s);
+      const arche = archetype || s.cohorts[0]?.id || "agent";
+      const ids = new Set(base.map((a) => a.id));
+      let k = 0;
+      while (ids.has(`custom_${k}`)) k++;
+      const id = `custom_${k}`;
+      const tmpl = base.find((a) => a.cohort === arche) || base[0];
+      const cohortName = s.cohorts.find((c) => c.id === arche)?.name || arche;
+      const traits = tmpl ? { ...tmpl.traits, name: "New agent" } : { name: "New agent" };
+      // seed initial_state from the archetype (market-agnostic — fish=price, clob=cash/shares, econ=savings)
+      const initial_state = { ...(tmpl?.initial_state || s.cohorts.find((c) => c.id === arche)?.initial_state || {}) };
+      const a: AgentRow = { id, cohort: arche, cohort_name: cohortName, name: "New agent", traits, initial_state };
+      return { agents: [...base, a], node: `agent:${id}` };
+    }),
+  // re-sample the flat roster from the seed: drop the materialised list + force a fresh sample
+  // (fetchRoster then re-materialises). Used by the Roster's "↻ Re-sample".
+  revertToCohorts: () => set((s) => ({ agents: null, roster: [], rosterKey: "", node: s.node?.startsWith("agent:") ? "market" : s.node })),
 
   refreshConfigs: () => {
     fetch("/api/configs")
@@ -706,7 +964,7 @@ export const useStore = create<MWState>((set, get) => ({
 
   startRun: () => {
     const s = get();
-    if (s.cohorts.length === 0) return; // nothing to settle yet — add a cohort first
+    if ((s.agents?.length ?? 0) === 0 && s.cohorts.length === 0) return; // nothing to settle — add an agent first
     get().pause(); // stop any replay playback before taking over the view
     const fresh = { ...s, liveSeries: emptySeries(), liveAgents: {}, liveNews: "", liveBenchmarks: {} };
     pushPath("replay");
@@ -720,6 +978,7 @@ export const useStore = create<MWState>((set, get) => ({
       liveBenchmarks: {},
       liveTrace: buildLiveTrace(fresh as MWState), // empty (T=0) stub → Replay shows "starting…", not the golden
       round: 0,
+      selectedAgentId: null,
       metrics: {},
     });
     s.send({ type: "run.start", config: buildConfig(s) });
@@ -776,7 +1035,7 @@ export const useStore = create<MWState>((set, get) => ({
       if (!r.ok) return;
       const trace = (await r.json()) as Trace;
       pushPath("replay", encodeURIComponent(id));
-      set({ traceId: id, trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
+      set({ traceId: id, trace, round: 0, screen: "replay", selectedAgentId: null, mech: TYPE_TO_MECH[trace.market] || "fish" });
     } catch {
       /* network/parse failure — keep the current view rather than crashing on an unhandled rejection */
     }
@@ -815,6 +1074,7 @@ export const useStore = create<MWState>((set, get) => ({
     get().pause();
     set({ round: r });
   },
+  selectAgent: (id) => set({ selectedAgentId: id }),
 }));
 
 function handleMessage(m: any, set: any, get: () => MWState) {
@@ -864,6 +1124,10 @@ function applyEvent(ev: any, set: any, get: () => MWState) {
     // fold the per-agent realized outcome (price/profit) onto its decision for the thinking cards
     const prev = s.liveAgents[ev.agent_id] || {};
     set({ liveAgents: { ...s.liveAgents, [ev.agent_id]: { ...prev, realized: ev.payload } } });
+  } else if (ev.type === "agent_record" && ev.agent_id) {
+    // generic Q&A record: the agent's heterogeneous input (question) + its outcome summary
+    const prev = s.liveAgents[ev.agent_id] || {};
+    set({ liveAgents: { ...s.liveAgents, [ev.agent_id]: { ...prev, question: ev.payload?.question, result_description: ev.payload?.result_description } } });
   } else if (ev.type === "series") {
     const ls = s.liveSeries;
     const p = ev.payload || {};

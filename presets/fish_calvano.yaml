@@ -7,11 +7,13 @@
 #
 # Live run: needs ANTHROPIC_API_KEY. ~300 rounds × 2 agents = ~600 Haiku calls (use_cache off,
 # so repeated runs are INDEPENDENT samples — run it ~5× and average the collusion delta).
-# Offline preview / golden trace: `make golden` forces the deterministic heuristic (no API key),
-# which reproduces the curve so the console visualizes without a live run.
+# Offline preview / golden trace: `make golden` replays the recorded trace below (no API key),
+# reproducing the curve so the console visualizes without a live run. To record a fresh baseline,
+# run live (the cohorts already use policy: claude with ANTHROPIC_API_KEY).
 seed: 7
 rounds: 300
 run_name: fish_calvano
+replay_trace_path: traces/golden/fish_calvano.trace.json
 
 market:
   type: fish_calvano

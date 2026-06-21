@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -35,11 +36,6 @@ _SYSTEM = {
         "You are an autonomous household in a macro economy. Each round you choose how much to work "
         "and how much to consume (each a fraction 0..1), reacting to prices, wages, taxes and your "
         "wealth, to maximize your long-run well-being."
-    ),
-    "clob": (
-        "You are an autonomous investor trading one stock on a continuous limit-order book. Each "
-        "round you may place a single limit order (buy/sell at a price and quantity) or hold, using "
-        "the last price, the book, recent returns and your own position to make money."
     ),
 }
 
@@ -81,6 +77,10 @@ class ClaudePolicy(DecisionPolicy):
         self._system = _SYSTEM.get(market.id, "You are an autonomous economic agent. Maximize your objective.")
         # a market may supply a faithful, paper-specific prompt (prefix=system, the rest=user)
         self._use_mkt_prompt = hasattr(market, "prompt_system") and hasattr(market, "prompt_user")
+        # optional GLOBAL user-message override (authored in the console "Question" node): when set,
+        # the rendered template REPLACES the market/default user prompt. Blank → market default. The
+        # system prompt is never affected.
+        self.question_template = (getattr(policy_cfg, "question_template", None) or "") if policy_cfg else ""
 
     # ---- cache ----
     def _cache_path(self, system: str, user: str, key: str) -> Path:
@@ -102,14 +102,37 @@ class ClaudePolicy(DecisionPolicy):
             + "\n\nCall submit_decision with your action for this round. Keep the reasoning to one sentence."
         )
 
+    def _render_template(self, obs: MarketObservation, memory: dict, profile: dict, persona: str, round_no: int) -> str:
+        """Fill the global question_template's {placeholders} from this agent's per-round state.
+        Available: {round} {persona} {profile}, {observation}/{private_state}/{memory} (json blobs),
+        and every public+private observation field at top level. Non-scalars render as JSON.
+        Unknown {placeholders} and literal braces are left untouched (no crash on stray '{')."""
+        def render(v) -> str:
+            if v is None:
+                return ""
+            if isinstance(v, (str, int, float, bool)):
+                return str(v)
+            return json.dumps(v, ensure_ascii=False)
+        subs: dict = {
+            "round": str(round_no), "persona": persona or "", "profile": render(profile),
+            "observation": render(obs.public), "private_state": render(obs.private), "memory": render(memory),
+        }
+        for k, v in {**(obs.public or {}), **(obs.private or {})}.items():
+            subs.setdefault(str(k), render(v))
+        return re.sub(r"\{(\w+)\}", lambda m: subs[m.group(1)] if m.group(1) in subs else m.group(0), self.question_template)
+
     def decide(self, agent_id, market_id, obs, memory, profile, persona, round_no, rng,
-               decision_schema, parse_decision) -> Decision:
+               decision_schema, parse_decision, system_prompt="") -> Decision:
         if self._use_mkt_prompt:
             system = self.market.prompt_system(persona, profile)
             user = self.market.prompt_user(obs, memory, round_no)
         else:
             system = self._system
             user = self._user_prompt(obs, memory, profile, persona, round_no)
+        if system_prompt:                 # per-agent override wins over the market/default system prompt
+            system = system_prompt
+        if self.question_template:        # global user-authored question replaces the user turn
+            user = self._render_template(obs, memory, profile, persona, round_no)
         key = f"{agent_id}:{round_no}"
         raw = self._complete(system, user, key)
         if raw is None:

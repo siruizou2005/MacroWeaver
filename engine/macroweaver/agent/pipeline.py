@@ -26,10 +26,12 @@ class AgentPipeline:
         policy: DecisionPolicy,
         market,
         rng,
+        system_prompt: str = "",
     ):
         self.agent_id = agent_id
         self.cohort_id = cohort_id
         self.persona = persona
+        self.system_prompt = system_prompt or ""
         self.profile = dict(profile)
         self.private_state = dict(private_state)
         self.memory = memory
@@ -38,6 +40,10 @@ class AgentPipeline:
         self.market = market
         self.rng = rng
         self.last_decision: Decision | None = None
+        # snapshots of what the agent saw at its last decision (the "question" of the Q&A record);
+        # set in decide(), read by the runner only when record_qa is on.
+        self.last_perceived: MarketObservation | None = None
+        self.last_memory: dict | None = None
 
     # --- Perception: fold the agent's own private state into the market observation ---
     def perceive(self, obs: MarketObservation) -> MarketObservation:
@@ -49,6 +55,8 @@ class AgentPipeline:
     def decide(self, obs: MarketObservation, round_no: int) -> Decision:
         perceived = self.perceive(obs)
         mem = self.memory.recall(round_no)
+        self.last_perceived = perceived
+        self.last_memory = mem
         decision = self.policy.decide(
             agent_id=self.agent_id,
             market_id=self.market.id,
@@ -60,6 +68,7 @@ class AgentPipeline:
             rng=self.rng,
             decision_schema=self.market.decision_schema(),
             parse_decision=self.market.parse_decision,
+            system_prompt=self.system_prompt,
         )
         self.last_decision = decision
         return decision

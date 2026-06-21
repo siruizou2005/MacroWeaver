@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import { MARKETS } from "../marketFields";
 import type { Mech } from "../../types";
@@ -18,30 +18,143 @@ const delBtnArmed: CSSProperties = { ...delBtn, color: "#fff", background: "#a84
 const ACCENT: Record<Mech, { fg: string; bg: string }> = {
   fish: { fg: "var(--green-d)", bg: "var(--green-l)" },
   econ: { fg: "var(--amber)", bg: "#f7efe2" },
-  clob: { fg: "var(--teal)", bg: "#e6eef4" },
 };
 
-// modal shown by "Start from scratch": pick the (fixed) market for a new empty world, then enter.
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "mechanism";
+}
+
+// A fork-and-edit starter that already implements the Market ABC + @register.
+const MECH_TEMPLATE = `from macroweaver.market import (
+    Market, register, AgentAction, Outcome, MarketObservation,
+)
+from pydantic import BaseModel
+
+
+class MyDecision(BaseModel):
+    bid: float
+
+
+@register("my_mechanism")          # auto-synced to your mechanism name on save
+class MyMarket(Market):
+    def init_world(self, params, agents, rng):
+        return {"last": 0.0}
+
+    def build_observation(self, state, agent_id, round_no):
+        return MarketObservation(public={"last": state["last"]}, private={})
+
+    def settle(self, actions, state, round_no, rng):     # pure: draw randomness from rng
+        bids = [a.payload.get("bid", 0.0) for a in actions]
+        clearing = sum(bids) / max(1, len(bids))
+        outs = [Outcome(a.agent_id, {"bid": a.payload.get("bid", 0.0),
+                                     "clearing": clearing}) for a in actions]
+        return outs, {**state, "last": clearing}
+
+    def public_series(self, state, outcomes, round_no):
+        return {"clearing": state["last"]}
+
+    def benchmarks(self, params):
+        return {}
+
+    def decision_schema(self):
+        return MyDecision
+
+    def parse_decision(self, raw, agent_id):
+        return AgentAction(agent_id, "bid", {"bid": float(raw["bid"])})
+`;
+
+// Author / upload a Python mechanism: name + code → save (server) → validate (engine AST gate +
+// ABC smoke). On success the new mechanism is opened as a from-scratch world.
+function MechanismEditor({ onClose, onDone }: { onClose: () => void; onDone: (type: string) => void }) {
+  const [name, setName] = useState("");
+  const [code, setCode] = useState(MECH_TEMPLATE);
+  const [status, setStatus] = useState<{ kind: "idle" | "busy" | "ok" | "err"; msg?: string }>({ kind: "idle" });
+  const slug = slugify(name || "mechanism");
+
+  const save = async () => {
+    if (!name.trim()) { setStatus({ kind: "err", msg: "Give the mechanism a name first." }); return; }
+    setStatus({ kind: "busy", msg: "Saving + validating…" });
+    // force @register(...) to match the slug so the engine can find the class
+    const src = code.replace(/@register\(\s*["'][^"']*["']\s*\)/, `@register("${slug}")`);
+    try {
+      const r = await fetch("/api/mechanisms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: slug, source: src }) });
+      if (!r.ok) { setStatus({ kind: "err", msg: (await r.json().catch(() => ({} as any))).error || "save failed" }); return; }
+      const v = await fetch(`/api/mechanisms/${slug}/validate`, { method: "POST" });
+      const verdict = await v.json().catch(() => ({ ok: false, error: "no verdict from validator" }));
+      if (verdict.ok) { setStatus({ kind: "ok", msg: "Valid ✓ — opening…" }); setTimeout(() => onDone(slug), 350); }
+      else setStatus({ kind: "err", msg: verdict.line ? `${verdict.error} (line ${verdict.line})` : verdict.error });
+    } catch (e: any) { setStatus({ kind: "err", msg: e.message }); }
+  };
+
+  const statusColor = status.kind === "ok" ? "var(--green-d)" : status.kind === "err" ? "#a8443c" : "var(--muted)";
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,30,24,.45)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px,96vw)", maxHeight: "90vh", overflow: "auto", background: "#fff", border: "1px solid var(--border)", borderRadius: 16, boxShadow: "0 24px 60px -24px rgba(20,40,28,.5)", padding: "22px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 22, margin: 0 }}>Author a mechanism · Python</h2>
+          <span onClick={onClose} style={{ fontSize: 22, color: "#aab3ab", cursor: "pointer", lineHeight: 1 }}>×</span>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: "8px 0 14px", lineHeight: 1.5 }}>
+          Subclass <span style={{ fontFamily: mono }}>Market</span> and implement the seven hooks. It runs in a sandboxed
+          subprocess (allowlisted imports only: numpy · math · pydantic · …; no <span style={{ fontFamily: mono }}>os</span> /
+          network / file I/O). No golden trace exists yet, so the first run must be live (Claude).
+        </p>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <input
+            value={name}
+            placeholder="mechanism name (e.g. Sealed-bid auction)"
+            spellCheck={false}
+            onChange={(e) => setName(e.target.value)}
+            style={{ flex: 1, fontFamily: "inherit", fontSize: 14, color: "var(--ink)", background: "#f7faf8", border: "1px solid var(--border)", borderRadius: 9, padding: "9px 12px" }}
+          />
+          <span style={{ fontFamily: mono, fontSize: 11.5, color: "var(--muted)" }}>type · {slug}</span>
+        </div>
+        <textarea
+          value={code}
+          spellCheck={false}
+          onChange={(e) => setCode(e.target.value)}
+          rows={20}
+          style={{ width: "100%", boxSizing: "border-box", fontFamily: mono, fontSize: 12, lineHeight: 1.5, color: "var(--green-d)", background: "#fbfdfb", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", resize: "vertical" }}
+        />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, gap: 12 }}>
+          <span style={{ fontSize: 12.5, color: statusColor, fontFamily: status.kind === "err" ? mono : "inherit", flex: 1, minWidth: 0 }}>{status.msg || ""}</span>
+          <button onClick={onClose} style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "var(--muted)", background: "#fff", border: "1px solid var(--border)", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>Cancel</button>
+          <button onClick={save} disabled={status.kind === "busy"} style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--green)", border: "none", borderRadius: 9, padding: "9px 18px", cursor: status.kind === "busy" ? "default" : "pointer", opacity: status.kind === "busy" ? 0.6 : 1 }}>Validate &amp; save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// modal shown by "Start from scratch": pick a built-in market OR a user-authored Python mechanism
+// for a new world (or author a new one), then enter the console.
 function MarketChooser({ onClose }: { onClose: () => void }) {
   const openPreset = useStore((s) => s.openPreset);
   const setMech = useStore((s) => s.setMech);
+  const mechanisms = useStore((s) => s.mechanisms);
+  const refreshMechanisms = useStore((s) => s.refreshMechanisms);
+  const openMechanism = useStore((s) => s.openMechanism);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { refreshMechanisms(); }, [refreshMechanisms]);
+
   const pick = (m: Mech) => { openPreset("blank"); setMech(m); }; // navigates into the empty console
+  const card: CSSProperties = { border: "1px solid var(--border)", borderRadius: 13, padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, minHeight: 168 };
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,30,24,.4)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "min(780px,94vw)", background: "#fff", border: "1px solid var(--border)", borderRadius: 16, boxShadow: "0 24px 60px -24px rgba(20,40,28,.5)", padding: "24px 26px" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "min(820px,94vw)", background: "#fff", border: "1px solid var(--border)", borderRadius: 16, boxShadow: "0 24px 60px -24px rgba(20,40,28,.5)", padding: "24px 26px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 24, margin: 0 }}>Pick a market</h2>
           <span onClick={onClose} style={{ fontSize: 22, color: "#aab3ab", cursor: "pointer", lineHeight: 1 }}>×</span>
         </div>
         <p style={{ fontSize: 14, color: "var(--muted)", margin: "8px 0 20px", maxWidth: 560 }}>
-          The market is the only swappable block. Choose one for your new world — it's fixed once you start; you'll add agents next.
+          The market is the only swappable block — pick a built-in, your own Python mechanism, or author a new one. It's fixed once you start; you'll add agents next.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
           {MARKETS.map((spec) => {
             const a = ACCENT[spec.mech];
             return (
-              <div key={spec.type} onClick={() => pick(spec.mech)} className="mw-card-hover" style={{ border: "1px solid var(--border)", borderRadius: 13, padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, minHeight: 168 }}>
+              <div key={spec.type} onClick={() => pick(spec.mech)} className="mw-card-hover" style={card}>
                 <span style={{ fontFamily: mono, fontSize: 10.5, fontWeight: 600, alignSelf: "flex-start", color: a.fg, background: a.bg, padding: "3px 8px", borderRadius: 6 }}>{spec.type}</span>
                 <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 18 }}>{spec.name}</div>
                 <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.45, flex: 1 }}>{spec.blurb}</div>
@@ -49,8 +162,22 @@ function MarketChooser({ onClose }: { onClose: () => void }) {
               </div>
             );
           })}
+          {mechanisms.map((mech) => (
+            <div key={mech.id} onClick={() => openMechanism(mech.id)} className="mw-card-hover" style={card}>
+              <span style={{ fontFamily: mono, fontSize: 10.5, fontWeight: 600, alignSelf: "flex-start", color: "var(--indigo)", background: "var(--indigo-l)", padding: "3px 8px", borderRadius: 6 }}>{mech.id}</span>
+              <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 18 }}>{mech.id}</div>
+              <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.45, flex: 1 }}>Your Python mechanism. Add agents, then run live (Claude) to record its first trace.</div>
+              <div style={{ fontFamily: mono, fontSize: 11, color: "var(--indigo)" }}>custom · Python</div>
+            </div>
+          ))}
+          <div onClick={() => setEditing(true)} style={{ ...card, border: "1.5px dashed #cfd6cf", background: "#fcfdfc", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>
+            <span style={{ fontSize: 30, fontWeight: 300, lineHeight: 1 }}>{"</>"}</span>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Create your own</span>
+            <span style={{ fontSize: 12, textAlign: "center" }}>author a mechanism in Python</span>
+          </div>
         </div>
       </div>
+      {editing && <MechanismEditor onClose={() => setEditing(false)} onDone={(type) => { setEditing(false); openMechanism(type); }} />}
     </div>
   );
 }
@@ -92,15 +219,6 @@ const econSvg = {
     </svg>
   ),
 };
-const clobSvg = {
-  bg: "linear-gradient(180deg,#eef2f6,#e3eaf1)",
-  el: (
-    <svg width="170" height="64" viewBox="0 0 180 74">
-      <line x1="8" y1="38" x2="172" y2="38" stroke="#b9c6d4" strokeWidth="1" strokeDasharray="3 3" />
-      <path d="M8 40 L24 30 L40 44 L56 26 L72 38 L88 22 L104 42 L120 28 L136 46 L152 30 L172 40" fill="none" stroke="#2f6f8f" strokeWidth="2.2" />
-    </svg>
-  ),
-};
 
 export function PresetsPanel() {
   const openPreset = useStore((s) => s.openPreset);
@@ -120,8 +238,7 @@ export function PresetsPanel() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 18, marginTop: 30 }}>
         <PresetCard chips={["μ=0.25", "T=48", "2 firms"]} badge="Quantitative" badgeColor="var(--green-d)" badgeBg="var(--green-l)" title="Oligopoly Pricing" body="Pricing firms collude on logit demand." svg={fishSvg} onClick={() => openPreset("fish")} />
-        <PresetCard chips={["245 agents", "T=40"]} badge="Demo" badgeColor="var(--amber)" badgeBg="#f7efe2" title="EconAgent · Macro" body="Household cohorts drive wages, prices, jobs." svg={econSvg} onClick={() => openPreset("econ")} />
-        <PresetCard chips={["28 traders", "T=80"]} badge="Financial" badgeColor="var(--teal)" badgeBg="#e6eef4" title="TwinMarket · CLOB" body="Limit-order book with stylized facts." svg={clobSvg} onClick={() => openPreset("clob")} />
+        <PresetCard chips={["100 agents", "T=240"]} badge="Demo" badgeColor="var(--amber)" badgeBg="#f7efe2" title="EconAgent · Macro" body="Households drive wages, prices, jobs (Li et al. 2024)." svg={econSvg} onClick={() => openPreset("econ")} />
         <div
           onClick={() => setChoosing(true)}
           style={{ border: "1.5px dashed #cfd6cf", borderRadius: 15, background: "#fcfdfc", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 240, color: "var(--muted)" }}

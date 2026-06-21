@@ -21,17 +21,40 @@ class CohortConfig(BaseModel):
     name: str
     n: int = 1
     persona: str = ""                       # natural-language persona for the LLM system prompt
-    policy: str = "deterministic"           # "deterministic" | "claude"
+    system_prompt: str = ""                 # optional system-prompt override (empty → market default)
+    policy: str = "replay"                  # "claude" (live LLM) | "replay" (offline; needs replay_trace_path)
     profile: dict = Field(default_factory=dict)        # cost/quality | demographics | biases
     initial_state: dict = Field(default_factory=dict)  # starting private state
     memory: str = "notepad"                 # "notepad" | "pool" | "bdi"
     reflection: str = "insight"             # "insight" | "quarterly" | "bdi"
 
 
+class AgentDef(BaseModel):
+    """One explicitly-defined individual agent (the materialised-roster authoring layer).
+
+    When `Config.agents` is set it is the authoritative roster: each entry is one agent, with
+    `cohort` naming the archetype it was generated from (used for any unset defaults). Unset
+    persona/policy/memory/reflection fall back to that archetype cohort; `traits` carries the
+    agent's market-domain trait values (e.g. econ skill/name/age/job) so the market uses them
+    instead of sampling. This keeps cohort-only presets (no `agents`) byte-exact."""
+
+    id: str
+    cohort: str = ""                        # archetype id (for defaults / which generator made it)
+    n: int = 1                              # ×N byte-identical clones (replicated as id#0..n-1)
+    persona: str | None = None
+    system_prompt: str | None = None        # per-agent system-prompt override (None → cohort/market default)
+    policy: str | None = None
+    memory: str | None = None
+    reflection: str | None = None
+    profile: dict = Field(default_factory=dict)
+    initial_state: dict = Field(default_factory=dict)
+    traits: dict = Field(default_factory=dict)
+
+
 class MarketConfig(BaseModel):
     """THE swappable block."""
 
-    type: str                               # "fish_calvano" | "econagent" | "clob"
+    type: str                               # "fish_calvano" | "econagent"
     params: dict = Field(default_factory=dict)
 
 
@@ -55,15 +78,25 @@ class PolicyConfig(BaseModel):
     temperature: float | None = None        # omitted on opus-4-8 (sampling params unsupported)
     use_cache: bool = True
     max_concurrency: int = 5
+    # GLOBAL user-message template posed to each LLM agent every round. {placeholders} are filled
+    # from that agent's per-round state (round/persona + every observation field + json blobs).
+    # When set it REPLACES the market's built-in user prompt; blank/None → market default unchanged.
+    question_template: str | None = None
 
 
 class Config(BaseModel):
     seed: int = 0
     rounds: int = 48                        # Fish T=48
     run_name: str = "run"
+    # offline / no-API-key path: replay a previously recorded trace's decisions instead of
+    # calling an LLM. The path is absolute or relative to the repo root (e.g. a golden trace).
+    replay_trace_path: str | None = None
 
     market: MarketConfig
     cohorts: list[CohortConfig] = Field(default_factory=list)
+    # optional explicit per-agent roster (materialised from cohorts, then editable). When set it
+    # is authoritative; cohorts remain as archetypes for defaults. Absent → cohort flattening.
+    agents: list[AgentDef] | None = None
     layers: LayerConfig = Field(default_factory=LayerConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
     policy: PolicyConfig = Field(default_factory=PolicyConfig)

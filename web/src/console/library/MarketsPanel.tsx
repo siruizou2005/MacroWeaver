@@ -9,7 +9,6 @@ const mono = "'Spline Sans Mono',monospace";
 const ACCENT: Record<Mech, { fg: string; bg: string }> = {
   fish: { fg: "var(--green-d)", bg: "var(--green-l)" },
   econ: { fg: "var(--amber)", bg: "#f7efe2" },
-  clob: { fg: "var(--teal)", bg: "#e6eef4" },
 };
 
 export function MarketsPanel() {

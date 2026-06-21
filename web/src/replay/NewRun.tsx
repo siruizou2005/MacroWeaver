@@ -11,13 +11,11 @@ const mono = "'Spline Sans Mono',monospace";
 const STAT_LABELS: Record<string, string[]> = {
   fish: ["Mean price", "Collusion index"],
   econ: ["CPI", "Inflation %", "Unemployment %"],
-  clob: ["Last price", "Return %"],
 };
 
 const TITLES: Record<string, string> = {
   fish: "Oligopoly Pricing — price vs. benchmarks",
   econ: "EconAgent · Macro — CPI & inflation",
-  clob: "CLOB — traded price vs. fair value",
 };
 
 // Empty chart frame: axes + faint gridlines + a centered prompt. No data — that emptiness

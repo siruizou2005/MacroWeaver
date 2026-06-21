@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "../../store";
 import { CohortDrawer } from "./CohortDrawer";
 import { getMarket, marketChips } from "../marketFields";
@@ -28,7 +29,7 @@ export function WorldArena() {
   const expanded = useStore((s) => s.expanded);
   const selectNode = useStore((s) => s.selectNode);
   const openExpanded = useStore((s) => s.openExpanded);
-  const addCohort = useStore((s) => s.addCohort);
+  const addAgent = useStore((s) => s.addAgent);
   const rounds = useStore((s) => s.rounds);
   const granularity = useStore((s) => s.granularity);
   const marketParams = useStore((s) => s.marketParams);
@@ -38,11 +39,20 @@ export function WorldArena() {
   const liveSeries = useStore((s) => s.liveSeries);
   const shock = useStore((s) => s.shock);
   const armRun = useStore((s) => s.armRun);
+  const roster = useStore((s) => s.roster);
+  const agentsList = useStore((s) => s.agents);
+  const fetchRoster = useStore((s) => s.fetchRoster);
+  const setView = useStore((s) => s.setView);
+  const seed = useStore((s) => s.seed);
+  const customType = useStore((s) => s.customType);
+  const questionTemplate = useStore((s) => s.questionTemplate);
 
-  const k = cohorts.length;
+  // (re)sample the per-agent roster whenever the inputs that determine it change
+  const cohortSig = JSON.stringify(cohorts.map((c) => [c.id, c.n, c.profile, c.initial_state]));
+  useEffect(() => { fetchRoster(); }, [seed, cohortSig, JSON.stringify(marketParams)]); // eslint-disable-line
+
   const cx = 318, cy = 262;
-  const R = k <= 3 ? 196 : k <= 5 ? 202 : 210;
-  const mkt = marketMeta(mech, marketParams);
+  const mkt = customType ? { name: customType, chips: [] as string[] } : marketMeta(mech, marketParams);
 
   const infoOp = layers.info ? 0.95 : 0.22;
   // The orange line is the (optional) Shock injection only — "news" has no separate
@@ -50,45 +60,40 @@ export function WorldArena() {
   const shockSel = node === "shock";
   const shockOp = shock || shockSel ? 0.95 : 0.2;
 
-  const placed = cohorts.map((co, i) => {
-    const ang = ((-90 + (i * 360) / k) * Math.PI) / 180;
-    return { co, i, x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang), col: ACOLORS[i % ACOLORS.length] };
+  // Place INDIVIDUALS around the market: up to 6 sampled across the roster (so a 100-agent cohort
+  // shows 6 real, heterogeneous people), plus a "+N more" node → Roster. Falls back to cohort
+  // badges before the roster is sampled or when there are none.
+  const MAX_NODES = 6;
+  const individuals = agentsList ?? roster;   // materialised agents take precedence over the sample
+  const sampled = individuals.length <= MAX_NODES
+    ? individuals
+    : Array.from({ length: MAX_NODES }, (_, i) => individuals[Math.round((i * (individuals.length - 1)) / (MAX_NODES - 1))]);
+  const overflow = individuals.length - sampled.length;
+  type Node = { kind: "agent"; a: typeof roster[number] } | { kind: "more" } | { kind: "cohort"; co: (typeof cohorts)[number] };
+  const nodes: Node[] = individuals.length > 0
+    ? [...sampled.map((a) => ({ kind: "agent" as const, a })), ...(overflow > 0 ? [{ kind: "more" as const }] : [])]
+    : cohorts.map((co) => ({ kind: "cohort" as const, co }));
+  const m = nodes.length;
+  const R = m <= 3 ? 196 : m <= 5 ? 202 : 210;
+  const placed = nodes.map((nd, i) => {
+    const ang = ((-90 + (i * 360) / Math.max(1, m)) * Math.PI) / 180;
+    return { nd, i, x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang), col: ACOLORS[i % ACOLORS.length] };
   });
 
+  const nAgents = individuals.length;
   const trackFill = `${((Math.min(liveRound, rounds) / Math.max(1, rounds)) * 100).toFixed(1)}%`;
   const marketSel = node === "market";
   const recSel = node === "recorder";
 
-  // Recorder node content — the ACTUAL per-round record, read live from the stream.
-  // Each round logs: agent output (price/reasoning) → mechanism's objective result
-  // (price·qty·profit) → the headline series written back to the world & trace.
-  const last = (arr?: number[]) => (arr && arr.length ? arr[arr.length - 1] : undefined);
-  const fmt = (v: number | undefined, d = 2) => (v == null ? "—" : v.toFixed(d));
-  const cohortName = (id: string) => {
-    const cid = id.replace(/_\d+$/, "");
-    return cohorts.find((c) => c.id === cid)?.name || id;
-  };
-  // The per-round record is market-shaped: fish settles price/profit, clob price/pnl,
-  // econ income/wealth — so read each market's own realized fields, not just fish's.
-  const recRows = Object.entries(liveAgents).map(([id, a]: [string, any]) => {
-    const r = a?.realized || {};
-    const act = a?.action || {};
-    if (mech === "econ") return { name: cohortName(id), mainPrefix: "inc ", main: r.income, subLabel: "w", sub: r.wealth };
-    if (mech === "clob") return { name: cohortName(id), mainPrefix: "$", main: r.price ?? act.price, subLabel: "pnl", sub: r.pnl };
-    return { name: cohortName(id), mainPrefix: "$", main: r.price ?? act.price, subLabel: "π", sub: r.profit };
-  });
-  const recMean = last(liveSeries.cols.mean_price);
-  const recIdx = last(liveSeries.cols.collusion_index);
-  // gate on the live run itself (not a fish-only `price` field) so the panel shows for
-  // every market while running, and reverts to the static schema once the run is over.
-  const recHasData = running && liveRound > 0 && recRows.some((r) => r.main != null);
+  // Question node — a brief summary of the global prompt template authored in the Inspector.
+  const qSummary = questionTemplate.trim().replace(/\s+/g, " ");
 
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", paddingTop: 58 }}>
       <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
         <div style={{ minWidth: "100%", minHeight: "100%", width: "max-content", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 28px", boxSizing: "border-box" }}>
-          <div style={{ position: "relative", width: 760, height: 520, flex: "none" }}>
-            <svg viewBox="0 0 760 520" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+          <div style={{ position: "relative", width: 800, height: 520, flex: "none" }}>
+            <svg viewBox="0 0 800 520" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
               <defs>
                 <marker id="mw-ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#7a8290" /></marker>
                 <marker id="mw-arn" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#bd7a2a" /></marker>
@@ -106,11 +111,11 @@ export function WorldArena() {
               <path onClick={() => selectNode("shock")} d="M600 70 L432 188" stroke="#bd7a2a" strokeWidth={shockSel ? 2.2 : 1.4} strokeDasharray="4 5" fill="none" markerEnd="url(#mw-arn)" opacity={shockOp} style={{ pointerEvents: "auto", cursor: "pointer" }} />
               <text onClick={() => selectNode("shock")} x="606" y="60" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fontWeight={shockSel ? 700 : 400} fill="#bd7a2a" opacity={shockOp} style={{ pointerEvents: "auto", cursor: "pointer" }}>{shock ? `Shock · ${shock.kind} @r${shock.round}` : "Shock · optional"}</text>
               {/* lower lane: record → out to the recorder */}
-              <line x1="420" y1="262" x2="556" y2="262" stroke="#7a8290" strokeWidth="1.6" markerEnd="url(#mw-ar)" />
-              <text x="488" y="254" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">record →</text>
+              <line x1="420" y1="262" x2="614" y2="262" stroke="#7a8290" strokeWidth="1.6" markerEnd="url(#mw-ar)" />
+              <text x="517" y="254" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">record →</text>
               {/* upper lane: write-back arc looping the recorded state back into the world */}
-              <path d="M556 246 C522 202 446 202 414 244" fill="none" stroke="#1c7a4b" strokeWidth="1.4" strokeDasharray="4 5" markerEnd="url(#mw-arg)" opacity={0.85} />
-              <text x="485" y="192" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11" fill="#1c7a4b">↻ write-back · next round</text>
+              <path d="M614 246 C566 200 452 200 414 244" fill="none" stroke="#1c7a4b" strokeWidth="1.4" strokeDasharray="4 5" markerEnd="url(#mw-arg)" opacity={0.85} />
+              <text x="514" y="192" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11" fill="#1c7a4b">↻ write-back · next round</text>
             </svg>
 
             {/* market core */}
@@ -133,87 +138,112 @@ export function WorldArena() {
               </div>
             </div>
 
-            {/* recorder · write-back node — sits at the end of the record→ arrow.
-                Shows the ACTUAL per-round record live; falls back to the field schema when idle. */}
+            {/* question node — authors the GLOBAL prompt posed to each agent every round (edited in
+                the Inspector). Canvas shows a brief summary; blank = the market's built-in question. */}
             <div
               onClick={() => selectNode("recorder")}
               style={{
-                position: "absolute", left: 642, top: cy, transform: "translate(-50%,-50%)", width: 162, textAlign: "left",
+                position: "absolute", left: 700, top: cy, transform: "translate(-50%,-50%)", width: 162, textAlign: "left",
                 background: "#fff", borderRadius: 14, padding: "13px 13px", cursor: "pointer",
                 border: `1.5px solid ${recSel ? "var(--green)" : "#cfe0d4"}`,
                 boxShadow: recSel ? "0 12px 30px -12px rgba(28,122,75,.5)" : "0 10px 30px -16px rgba(20,30,24,.3)",
               }}
             >
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--green-d)" }}>▤ Record</span>
-                <span style={{ fontFamily: mono, fontSize: 9.5, color: "var(--muted)" }}>{recHasData ? `t=${liveRound}` : "write-back"}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--green-d)" }}>▤ Question</span>
+                <span style={{ fontFamily: mono, fontSize: 9.5, color: "var(--muted)" }}>per round</span>
               </div>
-
-              {recHasData ? (
-                <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 6, fontFamily: mono, fontSize: 10, color: "var(--ink)" }}>
-                  {recRows.map((r, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                      <span style={{ color: "var(--green-d)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                      <span style={{ flex: "none", color: "var(--muted)" }}>{r.mainPrefix}{fmt(r.main)} · {r.subLabel} {fmt(r.sub, 1)}</span>
-                    </div>
-                  ))}
-                  {mech === "fish" && (recMean != null || recIdx != null) && (
-                    <div style={{ borderTop: "1px dashed #d4e3d9", paddingTop: 5, display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
-                      <span>mean ${fmt(recMean)}</span>
-                      <span>idx {fmt(recIdx)}</span>
-                    </div>
-                  )}
-                  <div style={{ color: "var(--green-d)", fontSize: 9, marginTop: 1 }}>↻ written back → next round</div>
-                </div>
-              ) : (
-                <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 5, fontFamily: mono, fontSize: 9, color: "var(--muted)", lineHeight: 1.35 }}>
-                  <span style={{ color: "var(--ink)" }}>agent output</span>
-                  <span>price · reasoning</span>
-                  <span style={{ color: "#9fc0ad" }}>↓ mechanism aggregates</span>
-                  <span style={{ color: "var(--ink)" }}>objective result</span>
-                  <span>price · qty · profit</span>
-                  <span style={{ color: "#9fc0ad" }}>↓ write back</span>
-                  <span style={{ color: "var(--ink)" }}>series → next round</span>
-                  <span>mean_price · collusion</span>
-                </div>
-              )}
+              <div style={{ marginTop: 7, fontSize: 9.5, color: "var(--muted)", lineHeight: 1.4 }}>
+                posed to each agent · answer = action
+              </div>
+              {/* brief summary of the authored template (full text is editable in the Inspector) */}
+              <div style={{ marginTop: 8, fontFamily: mono, fontSize: 10, lineHeight: 1.45, color: qSummary ? "var(--ink)" : "var(--muted)", fontStyle: qSummary ? "normal" : "italic", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {qSummary || "market default — click to edit →"}
+              </div>
             </div>
 
-            {/* empty from-0 state — prompt to add cohorts */}
-            {k === 0 && (
+            {/* empty from-0 state — prompt to add an agent */}
+            {nAgents === 0 && (
               <div style={{ position: "absolute", left: cx, top: cy + 92, transform: "translate(-50%,0)", width: 250, textAlign: "center" }}>
                 <div style={{ fontFamily: serif, fontSize: 15, fontWeight: 600, color: "var(--green-d)" }}>No agents yet</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.45 }}>
-                  Pick the market above, then add agents around it from the Roster or the sidebar.
+                  Pick the market above, then add the individual agents that populate the roster.
                 </div>
-                <div onClick={addCohort} style={{ display: "inline-flex", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "var(--green)", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add agent</div>
+                <div onClick={() => addAgent()} style={{ display: "inline-flex", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "var(--green)", border: "1px solid var(--green-l)", background: "var(--green-l)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add agent</div>
               </div>
             )}
 
-            {/* cohort badges */}
-            {placed.map(({ co, x, y }) => {
-              const sel = node === `cohort:${co.id}` || expanded === co.id;
+            {/* agent / cohort badges */}
+            {placed.map(({ nd, x, y, i }) => {
+              // "+N more" → open the Roster browser
+              if (nd.kind === "more") {
+                return (
+                  <div
+                    key="more"
+                    onClick={() => setView("roster")}
+                    style={{
+                      position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)", width: 132,
+                      background: "#fbfbfa", borderRadius: 12, padding: "14px 13px", cursor: "pointer", textAlign: "center",
+                      border: "1.5px dashed #cfd6cf", color: "var(--muted)",
+                    }}
+                  >
+                    <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--green-d)" }}>+{overflow} more</div>
+                    <div style={{ fontSize: 10.5, marginTop: 3 }}>open Roster ▸</div>
+                  </div>
+                );
+              }
+              // fallback: cohort badge (before the roster is sampled)
+              if (nd.kind === "cohort") {
+                const co = nd.co;
+                const sel = node === `cohort:${co.id}` || expanded === co.id;
+                return (
+                  <div
+                    key={co.id}
+                    onClick={() => openExpanded(co.id)}
+                    style={{
+                      position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)", width: 150,
+                      background: "#fff", borderRadius: 12, padding: "12px 13px", cursor: "pointer",
+                      border: `1.5px solid ${sel ? "var(--green)" : "#cfe0d4"}`,
+                      boxShadow: sel ? "0 10px 26px -10px rgba(28,122,75,.5)" : "0 3px 12px -6px rgba(20,30,24,.22)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
+                      <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--green-d)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{co.name}</span>
+                      <span style={{ fontFamily: mono, fontSize: 13, color: "var(--green)", fontWeight: 500, flex: "none" }}>×{co.n}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{co.persona}</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 9 }}>
+                      <span style={{ fontSize: 9.5, color: "#a7b0a8" }}>open ▸</span>
+                    </div>
+                  </div>
+                );
+              }
+              // individual agent badge: name + its traits (click selects that agent to edit)
+              const a = nd.a;
+              const sel = node === `agent:${a.id}`;
+              const traitRows = Object.entries(a.traits).filter(([key]) => key !== "name").slice(0, 3);
               return (
                 <div
-                  key={co.id}
-                  onClick={() => openExpanded(co.id)}
+                  key={a.id}
+                  onClick={() => selectNode(`agent:${a.id}`)}
+                  title={`${a.name} · ${a.cohort_name}`}
                   style={{
                     position: "absolute", left: x, top: y, transform: "translate(-50%,-50%)", width: 150,
-                    background: "#fff", borderRadius: 12, padding: "12px 13px", cursor: "pointer",
+                    background: "#fff", borderRadius: 12, padding: "11px 12px", cursor: "pointer",
                     border: `1.5px solid ${sel ? "var(--green)" : "#cfe0d4"}`,
                     boxShadow: sel ? "0 10px 26px -10px rgba(28,122,75,.5)" : "0 3px 12px -6px rgba(20,30,24,.22)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
-                    <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--green-d)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{co.name}</span>
-                    <span style={{ fontFamily: mono, fontSize: 13, color: "var(--green)", fontWeight: 500, flex: "none" }}>×{co.n}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ width: 18, height: 18, borderRadius: "50%", background: ACOLORS[i % ACOLORS.length].bg, color: ACOLORS[i % ACOLORS.length].fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flex: "none" }}>◎</span>
+                    <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 13.5, color: "var(--green-d)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</span>
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{co.persona}</div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 9 }}>
-                    <span style={{ display: "flex", gap: 5 }}>
-                      {[0, 1, 2].map((d) => <span key={d} style={{ width: 6, height: 6, borderRadius: "50%", border: "1.4px solid #9fc0ad" }} />)}
-                    </span>
-                    <span style={{ fontSize: 9.5, color: "#a7b0a8" }}>open ▸</span>
+                  <div style={{ marginTop: 7, display: "flex", flexDirection: "column", gap: 2 }}>
+                    {traitRows.map(([key, v]) => (
+                      <div key={key} style={{ fontFamily: mono, fontSize: 9.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span style={{ color: "#9aa79e" }}>{key}</span> {String(v)}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
@@ -235,10 +265,10 @@ export function WorldArena() {
         <span style={{ fontFamily: mono, fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>t={liveRound}</span>
         <button
           onClick={armRun}
-          disabled={running || k === 0}
-          style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "var(--green-d)", background: "var(--green-l)", border: "1px solid #d3e7db", padding: "7px 14px", borderRadius: 8, cursor: running || k === 0 ? "default" : "pointer", whiteSpace: "nowrap", opacity: running || k === 0 ? 0.6 : 1 }}
+          disabled={running || nAgents === 0}
+          style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "var(--green-d)", background: "var(--green-l)", border: "1px solid #d3e7db", padding: "7px 14px", borderRadius: 8, cursor: running || nAgents === 0 ? "default" : "pointer", whiteSpace: "nowrap", opacity: running || nAgents === 0 ? 0.6 : 1 }}
         >
-          {running ? "running…" : k === 0 ? "add an agent to play" : "▶ Play"}
+          {running ? "running…" : nAgents === 0 ? "add an agent to play" : "▶ Play"}
         </button>
       </div>
     </div>

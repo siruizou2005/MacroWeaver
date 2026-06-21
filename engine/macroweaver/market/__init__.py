@@ -15,12 +15,8 @@ from .base import (  # noqa: F401
 # Side-effect imports: each module calls @register on import.
 from . import fish_calvano  # noqa: F401,E402
 
-# econagent and clob are registered in later milestones; import defensively.
+# econagent is registered defensively (kept optional from its later-milestone origin).
 try:
     from . import econagent  # noqa: F401,E402
-except Exception:
-    pass
-try:
-    from . import clob  # noqa: F401,E402
 except Exception:
     pass

@@ -45,6 +45,9 @@ class NotepadMemory(Memory):
             ins = decision.beliefs.get("insights")
             if ins:                                  # LLM rewrites INSIGHTS.txt each round (overwrite)
                 self.insights = ins
+        desc = getattr(outcome, "description", "") if outcome else ""
+        if desc:                                     # only present when record_qa is on → golden untouched
+            rec["description"] = desc
         self.history.append(rec)
 
     def add_insight(self, insight: str) -> None:
@@ -67,6 +70,9 @@ class MemoryPool(Memory):
     def store(self, round_no: int, outcome, decision) -> None:
         rec = {"round": round_no}
         rec.update(outcome.realized if outcome else {})
+        desc = getattr(outcome, "description", "") if outcome else ""
+        if desc:                                     # only present when record_qa is on → golden untouched
+            rec["description"] = desc
         self.pool.append(rec)
         if len(self.pool) > self.length * 4:
             self.pool = self.pool[-self.length * 2:]
@@ -96,6 +102,9 @@ class BDIMemory(Memory):
     def store(self, round_no: int, outcome, decision) -> None:
         rec = {"round": round_no}
         rec.update(outcome.realized if outcome else {})
+        desc = getattr(outcome, "description", "") if outcome else ""
+        if desc:                                     # only present when record_qa is on → golden untouched
+            rec["description"] = desc
         self.history.append(rec)
         if decision is not None:
             self.belief = decision.beliefs.get("belief", self.belief) or self.belief
