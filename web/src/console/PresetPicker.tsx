@@ -65,7 +65,7 @@ function PresetCard({ chips, badge, badgeColor, badgeBg, title, body, svg, onCli
   );
 }
 
-export function Dashboard() {
+export function PresetPicker() {
   const openPreset = useStore((s) => s.openPreset);
   const traces = useStore((s) => s.traces);
   const loadTrace = useStore((s) => s.loadTrace);

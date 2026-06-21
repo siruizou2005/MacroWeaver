@@ -12,3 +12,4 @@ traces/*.events.jsonl
 !traces/golden/
 .env
 .DS_Store
+CLAUDE.md

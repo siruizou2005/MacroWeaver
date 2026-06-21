@@ -1,4 +1,5 @@
 import { useStore } from "../store";
+import { PresetPicker } from "../console/PresetPicker";
 import { SetupSidebar } from "../console/SetupSidebar";
 import { WorldArena } from "../console/canvas/WorldArena";
 import { Roster } from "../console/canvas/Roster";
@@ -8,12 +9,16 @@ import { Inspector } from "../console/rail/Inspector";
 
 const serif = "'Spectral',serif";
 
+const PRESET_NAMES: Record<string, string> = { fish: "Fish · Calvano", econ: "EconAgent · Macro", clob: "TwinMarket · CLOB", blank: "Untitled simulation" };
+
 function Toolbar() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const running = useStore((s) => s.running);
   const startRun = useStore((s) => s.startRun);
   const cancelRun = useStore((s) => s.cancelRun);
+  const preset = useStore((s) => s.preset) || "blank";
+  const backToPicker = useStore((s) => s.backToPicker);
 
   const seg = (v: "arena" | "roster" | "engine", label: string) => {
     const on = view === v;
@@ -29,7 +34,11 @@ function Toolbar() {
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "16px 22px", background: "linear-gradient(180deg,rgba(251,251,250,.97),rgba(251,251,250,0))" }}>
-      <span style={{ fontFamily: serif, fontSize: 18, fontWeight: 600 }}>Simulation console</span>
+      <span style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+        <span onClick={backToPicker} style={{ color: "var(--muted)", fontWeight: 500, cursor: "pointer" }}>Presets</span>
+        <span style={{ color: "var(--muted)", fontWeight: 400 }}>/</span>
+        <span>{PRESET_NAMES[preset]}</span>
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ display: "flex", background: "#fff", border: "1px solid var(--border)", borderRadius: 9, padding: 3, gap: 2 }}>
           {seg("arena", "World")}
@@ -49,6 +58,11 @@ function Toolbar() {
 
 export function Console() {
   const view = useStore((s) => s.view);
+  const preset = useStore((s) => s.preset);
+
+  // no preset chosen yet → the console opens on its preset picker
+  if (!preset) return <PresetPicker />;
+
   return (
     <main style={{ display: "grid", gridTemplateColumns: "222px 1fr 312px", height: "calc(100vh - 68px)" }}>
       <SetupSidebar />

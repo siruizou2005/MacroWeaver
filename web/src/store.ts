@@ -56,6 +56,24 @@ function emptySeries(): LiveSeries {
   return { round: [], mean_price: [], collusion_index: [], by_agent_price: {}, total_profit: [] };
 }
 
+// ---- URL routing: one real path per screen (server has SPA fallback) ----
+const SCREEN_PATH: Record<Screen, string> = {
+  landing: "/",
+  docs: "/docs",
+  console: "/console",
+  replay: "/replay",
+};
+function pathToScreen(path: string): Screen {
+  if (path.startsWith("/console") || path.startsWith("/presets")) return "console";
+  if (path.startsWith("/replay")) return "replay";
+  if (path.startsWith("/docs")) return "docs";
+  return "landing";
+}
+function pushPath(s: Screen) {
+  const p = SCREEN_PATH[s];
+  if (location.pathname !== p) history.pushState({}, "", p);
+}
+
 interface MWState {
   // navigation / selection
   screen: Screen;
@@ -99,6 +117,8 @@ interface MWState {
   connect: () => void;
   send: (m: any) => void;
   nav: (s: Screen) => void;
+  syncFromPath: () => void;
+  backToPicker: () => void;
   openPreset: (id: Mech | "blank") => void;
   selectNode: (n: string) => void;
   setView: (v: CanvasView) => void;
@@ -154,7 +174,7 @@ function buildConfig(s: MWState) {
 }
 
 export const useStore = create<MWState>((set, get) => ({
-  screen: "landing",
+  screen: pathToScreen(location.pathname),
   node: "market",
   view: "arena",
   mech: "fish",
@@ -209,13 +229,24 @@ export const useStore = create<MWState>((set, get) => ({
 
   nav: (s) => {
     if (s !== "replay") get().pause();
+    pushPath(s);
     set({ screen: s });
+  },
+
+  // browser back/forward → reflect the URL into the screen state
+  syncFromPath: () => set({ screen: pathToScreen(location.pathname) }),
+
+  // return the console to its preset-picker start state
+  backToPicker: () => {
+    get().pause();
+    set({ preset: null, running: false });
   },
 
   openPreset: (id) => {
     const mech: Mech = id === "blank" ? "fish" : (id as Mech);
     // try to load the shipped preset config so the console matches the golden trace
     const presetFile = id === "blank" ? null : MECH_TO_TYPE[mech];
+    pushPath("console");
     set({
       screen: "console",
       preset: id,
@@ -310,6 +341,7 @@ export const useStore = create<MWState>((set, get) => ({
     const r = await fetch(`/api/traces/${id}`);
     if (!r.ok) return;
     const trace = (await r.json()) as Trace;
+    pushPath("replay");
     set({ trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
   },
 

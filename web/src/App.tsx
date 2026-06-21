@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useStore } from "./store";
 import type { Screen } from "./types";
 import { Landing } from "./views/Landing";
-import { Dashboard } from "./views/Dashboard";
+import { Docs } from "./views/Docs";
 import { Console } from "./views/Console";
 import { Replay } from "./views/Replay";
 
@@ -30,7 +30,9 @@ function NavLink({ label, target }: { label: string; target: Screen }) {
 
 function Header() {
   const nav = useStore((s) => s.nav);
+  const screen = useStore((s) => s.screen);
   const connected = useStore((s) => s.connected);
+  const inApp = screen === "console" || screen === "replay";
   return (
     <header
       style={{
@@ -87,38 +89,49 @@ function Header() {
           </span>
         </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <NavLink label="Overview" target="landing" />
-          <NavLink label="Presets" target="dashboard" />
-          <NavLink label="Console" target="console" />
-          <NavLink label="Replay" target="replay" />
+          {inApp ? (
+            <>
+              <NavLink label="Console" target="console" />
+              <NavLink label="Replay" target="replay" />
+            </>
+          ) : (
+            <>
+              <NavLink label="Overview" target="landing" />
+              <NavLink label="Docs" target="docs" />
+            </>
+          )}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-          <span
-            title={connected ? "engine connected" : "connecting…"}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: connected ? "var(--green)" : "#c9ccc6",
-            }}
-          />
-          <span style={{ fontSize: 14, color: "var(--muted)", cursor: "pointer" }}>Docs</span>
-          <button
-            onClick={() => nav("console")}
-            style={{
-              fontFamily: "inherit",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#fff",
-              background: "var(--green)",
-              border: "none",
-              padding: "9px 18px",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          >
-            Open console
-          </button>
+          {inApp ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--muted)" }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: connected ? "var(--green)" : "#c9ccc6",
+                }}
+              />
+              {connected ? "Engine connected" : "Connecting…"}
+            </span>
+          ) : (
+            <button
+              onClick={() => nav("console")}
+              style={{
+                fontFamily: "inherit",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#fff",
+                background: "var(--green)",
+                border: "none",
+                padding: "9px 18px",
+                borderRadius: 8,
+                cursor: "pointer",
+              }}
+            >
+              Open console
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -128,14 +141,17 @@ function Header() {
 export function App() {
   const screen = useStore((s) => s.screen);
   const connect = useStore((s) => s.connect);
+  const syncFromPath = useStore((s) => s.syncFromPath);
   useEffect(() => {
     connect();
-  }, [connect]);
+    window.addEventListener("popstate", syncFromPath);
+    return () => window.removeEventListener("popstate", syncFromPath);
+  }, [connect, syncFromPath]);
   return (
     <div style={{ minHeight: "100vh" }}>
       <Header />
       {screen === "landing" && <Landing />}
-      {screen === "dashboard" && <Dashboard />}
+      {screen === "docs" && <Docs />}
       {screen === "console" && <Console />}
       {screen === "replay" && <Replay />}
     </div>

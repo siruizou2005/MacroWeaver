@@ -1,6 +1,6 @@
 // Mirrors the engine's trace.json + streamed event shapes (shared/*.schema.json).
 
-export type Screen = "landing" | "dashboard" | "console" | "replay";
+export type Screen = "landing" | "docs" | "console" | "replay";
 export type CanvasView = "arena" | "roster" | "engine";
 export type Mech = "fish" | "econ" | "clob";
 
