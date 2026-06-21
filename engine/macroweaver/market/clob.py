@@ -220,6 +220,16 @@ class ClobMarket(Market):
         tick = self._params["tick"]
         ret = obs.public.get("recent_return_pct", 0.0)
         qty = 1 + int(rng.integers(0, 4)) if hasattr(rng, "integers") else 1 + int(rng.random() * 4)
+
+        # size against this agent's own recent P&L trend (BDI history) — losing → cut size,
+        # winning → press a little harder, independent of which strategy is trading
+        pnl_hist = [h.get("pnl", 0.0) for h in memory.get("history", [])]
+        if len(pnl_hist) >= 2:
+            if pnl_hist[-1] - pnl_hist[0] < -1e-6:
+                qty = max(1, qty - 1)
+            elif pnl_hist[-1] - pnl_hist[0] > 1e-6:
+                qty += 1
+
         if strat == "fundamental":
             fv = obs.private.get("fair_value_estimate", last)
             if fv > last:

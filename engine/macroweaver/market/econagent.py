@@ -202,12 +202,33 @@ class EconAgentMarket(Market):
         work_p = 0.72 - min(0.25, wealth / 400.0) + (float(rng.random()) - 0.5) * 0.06
         # buy now when inflation is high; save more when wealthy
         consume_p = 0.86 + 0.012 * infl - min(0.2, wealth / 500.0) + (float(rng.random()) - 0.5) * 0.05
+
+        # react to this agent's own realized history (pool), not just the current round —
+        # a choppy/falling income (e.g. gig work) should make the same persona behave more
+        # precautionary than a steady one, without hardcoding that by cohort name.
+        income_hist = [p.get("income", 0.0) for p in memory.get("pool", [])]
+        income_falling = False
+        if len(income_hist) >= 2:
+            avg_income = sum(income_hist) / len(income_hist)
+            income_falling = income_hist[-1] - income_hist[0] < -1e-6
+            if avg_income > 1e-6 and (max(income_hist) - min(income_hist)) / avg_income > 0.35:
+                work_p += 0.06
+                consume_p -= 0.08
+            if income_falling:
+                work_p += 0.05
+                consume_p -= 0.04
+            else:
+                work_p -= 0.03
+                consume_p += 0.03
+
         work_p = min(max(work_p, 0.2), 1.0)
         consume_p = min(max(consume_p, 0.1), 0.98)
         if infl > 0.5:
             note = "Prices climbing — bring purchases forward and keep working."
         elif wealth > 60:
             note = "Comfortable buffer; ease off hours and save a little more."
+        elif income_falling:
+            note = "Income's been slipping — picking up hours and trimming spend."
         else:
             note = "Steady work, spend to needs, rebuild the buffer."
         return Decision(
