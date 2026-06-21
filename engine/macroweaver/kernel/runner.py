@@ -145,6 +145,9 @@ class Runner:
 
         # build observations (reads only — blind submit)
         obs = {aid: self.market.build_observation(self.state, aid, r) for aid in self.agent_ids}
+        if news:  # surface the news/info stream to the agents themselves, not just the trace
+            for o in obs.values():
+                o.public["news"] = news
 
         # decision phase
         decisions = self._decide(obs, r)

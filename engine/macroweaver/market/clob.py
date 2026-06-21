@@ -214,6 +214,56 @@ class ClobMarket(Market):
     def agent_public(self, state, agent_id) -> dict:
         return {"strategy": state["strategy"].get(agent_id, "noise")}
 
+    # ----- faithful LLM prompt: BDI loop — persona/desire, belief+intention carried from
+    # last round, the tape (incl. the news/info stream), then an explicit decision request -----
+    def prompt_system(self, persona: str, profile: dict) -> str:
+        strat = profile.get("strategy", "noise")
+        desire = {
+            "fundamental": "Your desire: profit by trading toward your estimate of fair value "
+            "whenever the market price drifts away from it.",
+            "momentum": "Your desire: profit by riding trends — buy strength, sell weakness, "
+            "and reverse fast when a trend breaks.",
+            "noise": "Your desire: provide liquidity around the current price without taking "
+            "a strong directional view.",
+        }.get(strat, "Your desire: trade profitably based on your own read of the tape.")
+        return (
+            f"You are an autonomous investor trading one stock on a continuous limit-order "
+            f"book. Your style: {persona}. {desire} Each round you may place a single limit "
+            "order (buy or sell, at a price and quantity) or hold. Carry a belief about the "
+            "market and an intention for what to do next from round to round, updating both "
+            "based on what actually happened to your position and P&L, not just the tape."
+        )
+
+    def prompt_user(self, obs: MarketObservation, memory: dict, round_no: int) -> str:
+        pub, priv = obs.public, obs.private
+        last, bid, ask = pub.get("last_price"), pub.get("best_bid"), pub.get("best_ask")
+        parts = [
+            f"ROUND {round_no}",
+            f"Last traded price: {last:.2f}" if last is not None else "No trades yet.",
+            f"Best bid/ask: {bid}/{ask}" if (bid is not None or ask is not None) else "Book is empty.",
+            f"Recent return: {pub.get('recent_return_pct', 0.0):+.2f}%",
+        ]
+        if pub.get("news"):
+            parts += ["", "NEWS", pub["news"]]
+        parts += ["", "YOUR POSITION", f"Cash: {priv.get('cash', 0.0):.2f}; shares held: {priv.get('shares', 0)}."]
+        if priv.get("fair_value_estimate") is not None:
+            parts.append(f"Your private fair-value estimate: {priv['fair_value_estimate']:.2f}.")
+        hist = memory.get("history", [])
+        if hist:
+            last_h = hist[-1]
+            parts.append(f"Last round: P&L {last_h.get('pnl', 0.0):+.2f}, filled {last_h.get('fills', 0)} shares.")
+        parts += [
+            "",
+            "YOUR BELIEF / INTENTION (carried from last round)",
+            f"Belief: {memory.get('belief') or '(none yet)'}",
+            f"Intention: {memory.get('intention') or '(none yet)'}",
+            "",
+            "INSTRUCTIONS",
+            "Call submit_decision with: action (buy|sell|hold), price (limit price, ignored "
+            "if hold), qty (share quantity, ignored if hold), and reasoning (one sentence).",
+        ]
+        return "\n".join(parts)
+
     def heuristic(self, agent_id, obs, memory, profile, persona, round_no, rng) -> Decision:
         strat = obs.private.get("strategy", "noise")
         last = obs.public.get("last_price", 100.0)
