@@ -195,6 +195,79 @@ class EconAgentMarket(Market):
         tone = "rising" if infl > 0.3 else "easing" if infl < -0.3 else "steady"
         return f"CPI {state['price']*100:.1f} · inflation {tone} ({infl:.1f}%) · unemployment {state['unemployment']*100:.0f}%"
 
+    # ----- faithful LLM prompt: persona + employment delta + spend/tax + macro direction,
+    # closed with an explicit decision request (per the EconAgent paper's observation
+    # template) -----
+    def prompt_system(self, persona: str, profile: dict) -> str:
+        return (
+            f"You are a household in a macro economy. Your situation: {persona}. Each round "
+            "(one financial quarter) you choose two numbers in [0, 1]: work_propensity, the "
+            "fraction of your time you supply as labor, and consume_propensity, the fraction "
+            "of your income (plus a little savings) you spend on goods. Income = hours worked "
+            "x your skill x the prevailing wage. If everyone wants to buy more than the economy "
+            "produces, your purchases get rationed down. Taxes are progressive and redistributed "
+            "equally to everyone. Choose propensities that fit who you are and keep your wealth "
+            "and employment healthy over the long run — you are not trying to maximize a single "
+            "quarter."
+        )
+
+    def prompt_user(self, obs: MarketObservation, memory: dict, round_no: int) -> str:
+        pub, priv = obs.public, obs.private
+        employed = bool(priv.get("employed", True))
+        long_term = memory.get("long_term", [])
+        short_term = memory.get("short_term", [])
+
+        if short_term:
+            was_employed = bool(short_term[-1].get("employed", employed))
+            if employed and not was_employed:
+                job_note = "You just found work again after being idle last quarter."
+            elif not employed and was_employed:
+                job_note = "You just lost your job — no work this quarter."
+            elif employed:
+                job_note = "You're still employed, same as last quarter."
+            else:
+                job_note = "Still without work this quarter."
+        else:
+            job_note = "This is your first quarter in the economy — no history yet."
+
+        if long_term:
+            last = long_term[-1]
+            income = last.get("income", 0.0)
+            consumption = last.get("consumption", 0.0)
+            tax = last.get("tax", 0.0)
+            spend_note = (
+                f"Last quarter you earned {income:.2f}, paid {tax:.2f} in tax, and spent "
+                f"{consumption:.2f} on goods."
+            )
+        else:
+            spend_note = "You have no earnings/spending history yet."
+
+        infl = pub.get("inflation_pct", 0.0)
+        tone = "rising" if infl > 0.3 else "easing" if infl < -0.3 else "steady"
+        parts = [
+            f"ROUND {round_no} (quarter {round_no})",
+            f"Your skill level is {priv.get('skill', 1.0):.2f}; your current wealth is {priv.get('wealth', 0.0):.2f}.",
+            job_note,
+            spend_note,
+            "",
+            "MACRO CONDITIONS",
+            f"CPI is {pub.get('cpi', 100.0):.1f}; inflation is {tone} ({infl:+.1f}%).",
+            f"The prevailing wage is {pub.get('wage', 1.0):.3f}/hour; unemployment is "
+            f"{pub.get('unemployment_pct', 0.0):.1f}%; the savings interest rate is "
+            f"{pub.get('interest_rate_pct', 0.0):.1f}%.",
+            "",
+        ]
+        if memory.get("insights"):
+            parts += ["YOUR OWN NOTES FROM LAST REFLECTION", memory["insights"], ""]
+        parts += [
+            "INSTRUCTIONS",
+            "Call submit_decision with three fields:",
+            "  1) work_propensity: the fraction of your available time you work this quarter (0..1);",
+            "  2) consume_propensity: the fraction of your income (plus a little savings) you spend (0..1);",
+            "  3) reasoning: one sentence on why, given your situation above.",
+        ]
+        return "\n".join(parts)
+
     def heuristic(self, agent_id, obs, memory, profile, persona, round_no, rng) -> Decision:
         infl = obs.public.get("inflation_pct", 0.0)
         wealth = obs.private.get("wealth", 20.0)
