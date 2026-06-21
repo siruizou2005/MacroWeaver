@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useStore } from "../store";
 import type { LibTab } from "../types";
 import { PresetsPanel } from "./library/PresetsPanel";
@@ -7,10 +7,10 @@ import { MarketsPanel } from "./library/MarketsPanel";
 import { SchemaPanel } from "./library/SchemaPanel";
 import { SettingsPanel } from "./library/SettingsPanel";
 
-const TABS: { id: LibTab; glyph: string; label: string; group: "Library" | "Reference" }[] = [
-  { id: "presets", glyph: "◫", label: "Presets", group: "Library" },
-  { id: "traces", glyph: "◴", label: "Traces", group: "Library" },
-  { id: "markets", glyph: "⊞", label: "Markets", group: "Library" },
+const TABS: { id: LibTab; glyph: string; label: string; group: "Console" | "Reference" }[] = [
+  { id: "presets", glyph: "◫", label: "Presets", group: "Console" },
+  { id: "traces", glyph: "◴", label: "Traces", group: "Console" },
+  { id: "markets", glyph: "⊞", label: "Markets", group: "Console" },
   { id: "schema", glyph: "{ }", label: "config schema", group: "Reference" },
   { id: "settings", glyph: "⚙", label: "Settings", group: "Reference" },
 ];
@@ -28,7 +28,7 @@ function Sidebar({ tab, setTab }: { tab: LibTab; setTab: (t: LibTab) => void }) 
       </div>
     );
   };
-  const group = (g: "Library" | "Reference") => (
+  const group = (g: "Console" | "Reference") => (
     <>
       <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".14em", color: "var(--muted)", textTransform: "uppercase", margin: "0 0 14px 6px" }}>{g}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -38,7 +38,7 @@ function Sidebar({ tab, setTab }: { tab: LibTab; setTab: (t: LibTab) => void }) 
   );
   return (
     <aside style={{ borderRight: "1px solid var(--border)", padding: "38px 24px 38px 0" }}>
-      {group("Library")}
+      {group("Console")}
       <div style={{ height: 1, background: "var(--border)", margin: "22px 6px" }} />
       {group("Reference")}
     </aside>
@@ -46,7 +46,8 @@ function Sidebar({ tab, setTab }: { tab: LibTab; setTab: (t: LibTab) => void }) 
 }
 
 export function PresetPicker() {
-  const [tab, setTab] = useState<LibTab>("presets");
+  const tab = useStore((s) => s.libTab);
+  const setTab = useStore((s) => s.setLibTab);
   const refreshConfigs = useStore((s) => s.refreshConfigs);
   useEffect(() => { refreshConfigs(); }, [refreshConfigs]);
 

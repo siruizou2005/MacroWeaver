@@ -27,7 +27,7 @@ function SaveShare() {
     setPub(null);
     setSaveMsg("saving…");
     const id = await saveCurrentConfig();
-    setSaveMsg(id ? `Saved to library · configs/${id}.yaml` : "Save failed");
+    setSaveMsg(id ? `Saved · configs/${id}.yaml` : "Save failed");
   };
   const doPublish = async () => {
     const author = nick.trim();
@@ -184,7 +184,7 @@ function ConfigPanel() {
             style={btn(true)}
             onClick={async () => { setStatus("saving…"); const id = await saveCurrentConfig(); setStatus(id ? `saved → configs/${id}.yaml` : "save failed"); }}
           >
-            Save to library
+            Save
           </button>
           <button style={btn(false)} onClick={() => navigator.clipboard?.writeText(json)}>Copy JSON</button>
           {status && <span style={{ fontSize: 12.5, color: "var(--muted)", fontFamily: mono }}>{status}</span>}

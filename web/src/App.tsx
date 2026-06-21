@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "./store";
-import type { Screen } from "./types";
+import type { LibTab, Screen } from "./types";
 import { Landing } from "./views/Landing";
 import { Docs } from "./views/Docs";
 import { Blog } from "./views/Blog";
@@ -35,17 +35,29 @@ function Header() {
   const preset = useStore((s) => s.preset);
   const connected = useStore((s) => s.connected);
   const backToPicker = useStore((s) => s.backToPicker);
+  const libTab = useStore((s) => s.libTab);
   const inApp = screen === "console" || screen === "replay";
   const enterConsole = () => { backToPicker(); nav("console"); };
 
-  // one contextual step back: replay → console; editor → library; library → home
+  // Contextual single step back:
+  //  - console home (picker) → Home (landing)
+  //  - editor / trace replay → back to the console tab it was entered from
+  //  - a replay reached by Running a world → back to that editor
+  const TAB_LABEL: Record<LibTab, string> = { presets: "Presets", traces: "Traces", markets: "Markets", schema: "config schema", settings: "Settings" };
   const inEditor = screen === "console" && !!preset;
-  const backLabel = screen === "replay" ? "Console" : inEditor ? "Library" : "Home";
-  const goBack = () => {
-    if (screen === "replay") nav("console");
-    else if (inEditor) backToPicker();
-    else nav("landing");
-  };
+  const onPicker = screen === "console" && !preset;
+  let backLabel: string;
+  let goBack: () => void;
+  if (onPicker) {
+    backLabel = "Home";
+    goBack = () => nav("landing");
+  } else if (inEditor) {
+    backLabel = TAB_LABEL[libTab] || "Console";
+    goBack = () => backToPicker();
+  } else {
+    backLabel = preset ? "Console" : TAB_LABEL[libTab] || "Console";
+    goBack = () => nav("console");
+  }
   return (
     <header
       style={{

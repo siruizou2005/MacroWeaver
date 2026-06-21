@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type {
-  Benchmarks, Cohort, CanvasView, Mech, PolicyCfg, PresetMeta, SavedConfigMeta,
+  Benchmarks, Cohort, CanvasView, LibTab, Mech, PolicyCfg, PresetMeta, SavedConfigMeta,
   Screen, ShockConfig, TemplateMeta, Trace, TraceMeta,
 } from "./types";
 import { defaultParams, getMarket } from "./console/marketFields";
@@ -85,6 +85,7 @@ interface MWState {
   savedConfigs: SavedConfigMeta[];
   publishedTemplates: TemplateMeta[]; // configs published to Markets
   showConfig: boolean; // raw config (JSON) viewer open?
+  libTab: LibTab; // active console tab — persisted so "Back" returns to its origin
 
   // live run
   running: boolean;
@@ -114,6 +115,7 @@ interface MWState {
   openPreset: (id: Mech | "blank") => void;
   selectNode: (n: string) => void;
   setView: (v: CanvasView) => void;
+  setLibTab: (t: LibTab) => void;
   setMech: (m: Mech) => void;
   addCohort: () => void;
   removeCohort: (id: string) => void;
@@ -207,6 +209,7 @@ export const useStore = create<MWState>((set, get) => ({
   savedConfigs: [],
   publishedTemplates: [],
   showConfig: false,
+  libTab: "presets",
 
   running: false,
   runId: null,
@@ -305,6 +308,7 @@ export const useStore = create<MWState>((set, get) => ({
 
   selectNode: (n) => set({ node: n }),
   setView: (v) => set({ view: v }),
+  setLibTab: (t) => set({ libTab: t }),
 
   setMech: (m) => {
     const spec = getMarket(m);
