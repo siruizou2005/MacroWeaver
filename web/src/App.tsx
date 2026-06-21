@@ -7,6 +7,39 @@ import { Blog } from "./views/Blog";
 import { Console } from "./views/Console";
 import { Replay } from "./views/Replay";
 
+// Logo mark: two point-symmetric line fans inside a circle, à la a woven yin-yang.
+// Generated rather than hand-plotted so the curve stays adjustable via a few params.
+const LOGO_R = 37;
+function logoFan(rimStart: number, rimSweep: number, neckAngle: number, neckR: number, ease: number, n: number, rotate: number) {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const rimA = rad(rimStart + rimSweep * t + rotate);
+    const na = rad(neckAngle + rotate);
+    const r = neckR * Math.pow(1 - t, ease);
+    lines.push({
+      x1: 50 + r * Math.cos(na),
+      y1: 50 + r * Math.sin(na),
+      x2: 50 + LOGO_R * Math.cos(rimA),
+      y2: 50 + LOGO_R * Math.sin(rimA),
+    });
+  }
+  return lines;
+}
+const LOGO_LINES = [...logoFan(-80, 150, -30, 29, 1.4, 15, 0), ...logoFan(-80, 150, -30, 29, 1.4, 15, 180)];
+
+function Logo({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: "none" }}>
+      <circle cx={50} cy={50} r={LOGO_R + 1.6} fill="none" stroke="var(--green-d)" strokeWidth={3.2} />
+      {LOGO_LINES.map((l, i) => (
+        <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="var(--green-d)" strokeWidth={2.2} strokeLinecap="round" />
+      ))}
+    </svg>
+  );
+}
+
 function NavLink({ label, target }: { label: string; target: Screen }) {
   const screen = useStore((s) => s.screen);
   const nav = useStore((s) => s.nav);
@@ -84,24 +117,7 @@ function Header() {
           onClick={() => nav("landing")}
           style={{ display: "flex", alignItems: "center", gap: 11, cursor: "pointer", flex: "none" }}
         >
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 34,
-              height: 30,
-              border: "1.5px solid var(--green-d)",
-              borderRadius: 6,
-              fontFamily: "'Spectral',serif",
-              fontWeight: 600,
-              fontSize: 15,
-              color: "var(--green-d)",
-              letterSpacing: "-.5px",
-            }}
-          >
-            M<span style={{ color: "var(--green)", padding: "0 1px" }}>≋</span>
-          </span>
+          <Logo />
           <span
             style={{
               fontFamily: "'Spectral',serif",
