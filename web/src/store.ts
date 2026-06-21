@@ -134,9 +134,11 @@ interface MWState {
   refreshConfigs: () => void;
   saveCurrentConfig: (name?: string) => Promise<string | null>;
   loadSavedConfig: (id: string) => Promise<void>;
+  deleteSavedConfig: (id: string) => Promise<void>;
   refreshTemplates: () => void;
   publishConfig: (author: string) => Promise<string | null>;
   loadTemplate: (id: string) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
   openExpanded: (id: string) => void;
   collapse: () => void;
   startRun: () => void;
@@ -455,6 +457,16 @@ export const useStore = create<MWState>((set, get) => ({
     }
   },
 
+  // delete a private saved config (configs/) — independent of any published template
+  deleteSavedConfig: async (id) => {
+    try {
+      await fetch(`/api/configs/${id}`, { method: "DELETE" });
+    } catch {
+      /* ignore */
+    }
+    get().refreshConfigs();
+  },
+
   refreshTemplates: () => {
     fetch("/api/templates")
       .then((r) => (r.ok ? r.json() : []))
@@ -501,6 +513,16 @@ export const useStore = create<MWState>((set, get) => ({
     } catch {
       /* ignore */
     }
+  },
+
+  // un-publish a Markets template (templates/) — independent of the private saved config
+  deleteTemplate: async (id) => {
+    try {
+      await fetch(`/api/templates/${id}`, { method: "DELETE" });
+    } catch {
+      /* ignore */
+    }
+    get().refreshTemplates();
   },
 
   openExpanded: (id) => set({ expanded: id, node: `cohort:${id}` }),

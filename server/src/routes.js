@@ -4,8 +4,8 @@ import path from "node:path";
 import { SHARED_DIR } from "./config.js";
 import {
   listPresets, getPreset, listTraces, getTrace,
-  listConfigs, getConfig, saveConfig,
-  listTemplates, getTemplate, saveTemplate,
+  listConfigs, getConfig, saveConfig, deleteConfig,
+  listTemplates, getTemplate, saveTemplate, deleteTemplate,
 } from "./files.js";
 
 export const router = Router();
@@ -47,6 +47,14 @@ router.post("/configs", (req, res) => {
     res.status(400).json({ error: e.message });
   }
 });
+router.delete("/configs/:id", (req, res) => {
+  try {
+    deleteConfig(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 router.get("/templates", (_req, res) => res.json(listTemplates()));
 router.get("/templates/:id", (req, res) => {
@@ -60,6 +68,14 @@ router.post("/templates", (req, res) => {
   try {
     const id = saveTemplate(name || config.run_name, author, config);
     res.json({ id });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+router.delete("/templates/:id", (req, res) => {
+  try {
+    deleteTemplate(req.params.id);
+    res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

@@ -125,6 +125,12 @@ export function saveConfig(name, configObj) {
   return id;
 }
 
+export function deleteConfig(id) {
+  const p = safeJoin(CONFIGS_DIR, `${slug(id)}.yaml`);
+  if (fs.existsSync(p)) fs.rmSync(p);
+  return true;
+}
+
 // ---------- published Markets templates (config + author nickname) ----------
 export function listTemplates() {
   if (!fs.existsSync(TEMPLATES_DIR)) return [];
@@ -162,4 +168,10 @@ export function saveTemplate(name, author, configObj) {
   // editor rebuilds a clean config from buildConfig() on run, so it never reaches the kernel.
   fs.writeFileSync(p, YAML.stringify({ ...configObj, author: String(author || "anonymous") }), "utf-8");
   return id;
+}
+
+export function deleteTemplate(id) {
+  const p = safeJoin(TEMPLATES_DIR, `${slug(id)}.yaml`);
+  if (fs.existsSync(p)) fs.rmSync(p);
+  return true;
 }

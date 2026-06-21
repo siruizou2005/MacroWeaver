@@ -18,6 +18,7 @@ export function MarketsPanel() {
   const templates = useStore((s) => s.publishedTemplates);
   const refreshTemplates = useStore((s) => s.refreshTemplates);
   const loadTemplate = useStore((s) => s.loadTemplate);
+  const deleteTemplate = useStore((s) => s.deleteTemplate);
 
   useEffect(() => { refreshTemplates(); }, [refreshTemplates]);
 
@@ -70,9 +71,16 @@ export function MarketsPanel() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
             {templates.map((c) => (
-              <div key={c.id} onClick={() => loadTemplate(c.id)} className="mw-card-hover" style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
+              <div key={c.id} onClick={() => loadTemplate(c.id)} className="mw-card-hover" style={{ position: "relative", border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
+                <span
+                  onClick={(e) => { e.stopPropagation(); deleteTemplate(c.id); }}
+                  title="Un-publish (remove from Markets)"
+                  style={{ position: "absolute", top: 8, right: 10, fontSize: 15, color: "#c2ccc4", cursor: "pointer", lineHeight: 1 }}
+                >
+                  ×
+                </span>
                 <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.market || "config"}</div>
-                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0" }}>{c.name || c.id}</div>
+                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0", paddingRight: 14 }}>{c.name || c.id}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontSize: 11.5, color: "var(--green-d)", fontWeight: 600 }}>by {c.author || "anonymous"}</span>
                   <span style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}open ▸</span>

@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { useStore } from "../../store";
-import type { Mech } from "../../types";
 import {
   getMarket, GRANULARITIES, MEMORY_KINDS, REFLECTION_KINDS, SHOCK_KINDS,
   type FieldSpec,
@@ -163,17 +162,17 @@ export function Inspector() {
 
 function MarketPanel() {
   const mech = useStore((s) => s.mech);
-  const setMech = useStore((s) => s.setMech);
   const marketParams = useStore((s) => s.marketParams);
   const setMarketParam = useStore((s) => s.setMarketParam);
   const spec = getMarket(mech);
-
-  const mechs: [Mech, string][] = [["fish", "Fish"], ["econ", "EconAgent"], ["clob", "CLOB"]];
+  // the market is the swappable block, but it's chosen once when the world is created
+  // (a preset's market, or the Start-from-scratch chooser) and then fixed.
   return (
     <>
-      <SectionLabel>Market block · swappable</SectionLabel>
-      <div style={{ marginBottom: 16 }}>
-        <Seg value={mech} options={mechs} onChange={(m) => setMech(m)} color="var(--indigo)" />
+      <SectionLabel>Market · mechanism</SectionLabel>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, background: "var(--indigo-l)", border: "1px solid var(--indigo-bd)", borderRadius: 9, padding: "10px 13px" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--indigo)" }}>{spec.name}</span>
+        <span style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)" }} title="The market is chosen when the world is created — start a new world to change it">🔒 fixed</span>
       </div>
       <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)", marginBottom: 14 }}>type · {spec.type}</div>
       <SectionLabel>Parameters</SectionLabel>
