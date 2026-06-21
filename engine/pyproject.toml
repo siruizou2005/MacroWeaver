@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "macroweaver-engine"
+version = "0.1.0"
+description = "MacroWeaver — generative socio-economic simulation engine (five-primitive kernel, swappable market)"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.6",
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "sortedcontainers>=2.4",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40", "python-dotenv>=1.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+macroweaver = "macroweaver.cli.__main__:app"
+
+[tool.setuptools]
+packages = { find = { include = ["macroweaver*"] } }

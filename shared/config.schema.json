@@ -1,0 +1,216 @@
+{
+  "$defs": {
+    "CohortConfig": {
+      "description": "A group of homogeneous agents — the design's cohorts[{id,name,n,persona}].",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "n": {
+          "default": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "persona": {
+          "default": "",
+          "title": "Persona",
+          "type": "string"
+        },
+        "policy": {
+          "default": "deterministic",
+          "title": "Policy",
+          "type": "string"
+        },
+        "profile": {
+          "additionalProperties": true,
+          "title": "Profile",
+          "type": "object"
+        },
+        "initial_state": {
+          "additionalProperties": true,
+          "title": "Initial State",
+          "type": "object"
+        },
+        "memory": {
+          "default": "notepad",
+          "title": "Memory",
+          "type": "string"
+        },
+        "reflection": {
+          "default": "insight",
+          "title": "Reflection",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "CohortConfig",
+      "type": "object"
+    },
+    "LayerConfig": {
+      "properties": {
+        "observation": {
+          "default": true,
+          "title": "Observation",
+          "type": "boolean"
+        },
+        "institution_fiscal": {
+          "default": false,
+          "title": "Institution Fiscal",
+          "type": "boolean"
+        },
+        "institution_monetary": {
+          "default": false,
+          "title": "Institution Monetary",
+          "type": "boolean"
+        },
+        "production": {
+          "default": false,
+          "title": "Production",
+          "type": "boolean"
+        },
+        "social": {
+          "default": false,
+          "title": "Social",
+          "type": "boolean"
+        },
+        "news": {
+          "default": true,
+          "title": "News",
+          "type": "boolean"
+        },
+        "shock": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shock"
+        }
+      },
+      "title": "LayerConfig",
+      "type": "object"
+    },
+    "MarketConfig": {
+      "description": "THE swappable block.",
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "MarketConfig",
+      "type": "object"
+    },
+    "PolicyConfig": {
+      "properties": {
+        "model": {
+          "default": "claude-opus-4-8",
+          "title": "Model",
+          "type": "string"
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temperature"
+        },
+        "use_cache": {
+          "default": true,
+          "title": "Use Cache",
+          "type": "boolean"
+        },
+        "max_concurrency": {
+          "default": 5,
+          "title": "Max Concurrency",
+          "type": "integer"
+        }
+      },
+      "title": "PolicyConfig",
+      "type": "object"
+    },
+    "SchedulerConfig": {
+      "properties": {
+        "granularity": {
+          "default": "round",
+          "title": "Granularity",
+          "type": "string"
+        },
+        "reflect_every": {
+          "default": 4,
+          "title": "Reflect Every",
+          "type": "integer"
+        }
+      },
+      "title": "SchedulerConfig",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "seed": {
+      "default": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "rounds": {
+      "default": 48,
+      "title": "Rounds",
+      "type": "integer"
+    },
+    "run_name": {
+      "default": "run",
+      "title": "Run Name",
+      "type": "string"
+    },
+    "market": {
+      "$ref": "#/$defs/MarketConfig"
+    },
+    "cohorts": {
+      "items": {
+        "$ref": "#/$defs/CohortConfig"
+      },
+      "title": "Cohorts",
+      "type": "array"
+    },
+    "layers": {
+      "$ref": "#/$defs/LayerConfig"
+    },
+    "scheduler": {
+      "$ref": "#/$defs/SchedulerConfig"
+    },
+    "policy": {
+      "$ref": "#/$defs/PolicyConfig"
+    }
+  },
+  "required": [
+    "market"
+  ],
+  "title": "Config",
+  "type": "object"
+}

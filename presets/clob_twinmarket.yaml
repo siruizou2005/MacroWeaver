@@ -1,0 +1,36 @@
+# CLOB — TwinMarket-style equity order book (financial-market preset).
+# Same agent pipeline, an order-matching mechanism. Fundamentalists, momentum traders and
+# noise traders submit limit orders into a persistent book; the traded price exhibits
+# stylized facts (fat-tailed returns, volatility clustering).
+seed: 21
+rounds: 80
+run_name: clob_twinmarket
+
+market:
+  type: clob
+  params:
+    fair_value: 100.0
+    tick: 0.05
+    sigma: 0.012
+    init_cash: 100000
+    init_shares: 200
+    max_age: 3
+
+cohorts:
+  - { id: fundamental, name: Fundamentalists, n: 10, persona: "trade toward fair value", policy: deterministic, profile: { strategy: fundamental }, memory: bdi, reflection: bdi }
+  - { id: momentum,    name: Momentum,        n: 10, persona: "chase trends · herding bias", policy: deterministic, profile: { strategy: momentum }, memory: bdi, reflection: bdi }
+  - { id: noise,       name: Noise traders,   n: 8,  persona: "random liquidity",         policy: deterministic, profile: { strategy: noise }, memory: bdi, reflection: bdi }
+
+layers:
+  observation: true
+  social: true
+  news: true
+
+scheduler:
+  granularity: session
+  reflect_every: 5
+
+policy:
+  model: claude-opus-4-8
+  use_cache: true
+  max_concurrency: 5

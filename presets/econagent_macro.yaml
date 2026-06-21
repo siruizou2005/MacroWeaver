@@ -1,0 +1,40 @@
+# EconAgent — labor + goods macro market (the "second config" demo).
+# Same agent pipeline as Fish; only the market block changes. Household cohorts pick
+# work/consume propensities that aggregate into CPI, inflation, wages and unemployment.
+seed: 11
+rounds: 40
+run_name: econagent_macro
+
+market:
+  type: econagent
+  params:
+    fiscal: true
+    monetary: true
+    interest_rate: 0.01
+    price_k: 0.05
+    wage_k: 0.04
+    productivity: 1.0
+
+cohorts:
+  - { id: workers,  name: Workers,   n: 40,  persona: "wage-earning · consume monthly", policy: deterministic, memory: pool, reflection: quarterly }
+  - { id: savers,   name: Savers,    n: 30,  persona: "precautionary · low spend",      policy: deterministic, memory: pool, reflection: quarterly }
+  - { id: spenders, name: Spenders,  n: 60,  persona: "high marginal propensity",       policy: deterministic, memory: pool, reflection: quarterly }
+  - { id: gig,      name: Gig labor, n: 25,  persona: "volatile income",                policy: deterministic, memory: pool, reflection: quarterly }
+  - { id: retirees, name: Retirees,  n: 18,  persona: "fixed income · price-sensitive", policy: deterministic, memory: pool, reflection: quarterly }
+  - { id: students, name: Students,  n: 12,  persona: "credit-constrained",             policy: deterministic, memory: pool, reflection: quarterly }
+
+layers:
+  observation: true
+  institution_fiscal: true
+  institution_monetary: true
+  production: true
+  news: true
+
+scheduler:
+  granularity: quarter
+  reflect_every: 3
+
+policy:
+  model: claude-opus-4-8
+  use_cache: true
+  max_concurrency: 5

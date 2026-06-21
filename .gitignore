@@ -1,0 +1,14 @@
+node_modules/
+engine/.venv/
+engine/*.egg-info/
+engine/.mw_cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+web/dist/
+configs/*.yaml
+traces/*.trace.json
+traces/*.events.jsonl
+!traces/golden/
+.env
+.DS_Store

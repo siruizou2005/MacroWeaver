@@ -1,0 +1,48 @@
+# Fish et al. 2024 — Calvano logit pricing market (primary preset).
+# Two pricing firms on a logit-demand market. With the deterministic policy this
+# reproduces the iconic collusion curve: price climbs from Bertrand-Nash (~1.47)
+# toward the joint-monopoly price (~1.92) with no communication.
+seed: 7
+rounds: 48
+run_name: fish_calvano
+
+market:
+  type: fish_calvano
+  params:
+    a: 2.0        # product quality / intercept
+    mu: 0.25      # logit substitution (lower = more price-sensitive)
+    a0: 0.0       # outside-option attractiveness
+    cost: 1.0     # marginal cost
+
+cohorts:
+  - id: incumbent
+    name: Incumbent
+    n: 1
+    persona: cautious price-setter, high margin focus
+    policy: deterministic
+    profile: { cost: 1.0 }
+    initial_state: { price: 1.50 }
+    memory: notepad
+    reflection: insight
+  - id: challenger
+    name: Challenger
+    n: 1
+    persona: aggressive, willing to undercut to test share
+    policy: deterministic
+    profile: { cost: 1.0 }
+    initial_state: { price: 1.45 }
+    memory: notepad
+    reflection: insight
+
+layers:
+  observation: true
+  news: true
+
+scheduler:
+  granularity: round
+  reflect_every: 4
+
+policy:
+  model: claude-opus-4-8
+  use_cache: true
+  max_concurrency: 4

@@ -1,0 +1,2522 @@
+{
+  "schema_version": 1,
+  "run_name": "fish_calvano",
+  "config": {
+    "seed": 7,
+    "rounds": 48,
+    "run_name": "fish_calvano",
+    "market": {
+      "type": "fish_calvano",
+      "params": {
+        "a": 2.0,
+        "mu": 0.25,
+        "a0": 0.0,
+        "cost": 1.0
+      }
+    },
+    "cohorts": [
+      {
+        "id": "incumbent",
+        "name": "Incumbent",
+        "n": 1,
+        "persona": "cautious price-setter, high margin focus",
+        "policy": "deterministic",
+        "profile": {
+          "cost": 1.0
+        },
+        "initial_state": {
+          "price": 1.5
+        },
+        "memory": "notepad",
+        "reflection": "insight"
+      },
+      {
+        "id": "challenger",
+        "name": "Challenger",
+        "n": 1,
+        "persona": "aggressive, willing to undercut to test share",
+        "policy": "deterministic",
+        "profile": {
+          "cost": 1.0
+        },
+        "initial_state": {
+          "price": 1.45
+        },
+        "memory": "notepad",
+        "reflection": "insight"
+      }
+    ],
+    "layers": {
+      "observation": true,
+      "institution_fiscal": false,
+      "institution_monetary": false,
+      "production": false,
+      "social": false,
+      "news": true,
+      "shock": null
+    },
+    "scheduler": {
+      "granularity": "round",
+      "reflect_every": 4
+    },
+    "policy": {
+      "model": "claude-opus-4-8",
+      "temperature": null,
+      "use_cache": true,
+      "max_concurrency": 4
+    }
+  },
+  "market": "fish_calvano",
+  "granularity": "round",
+  "T": 48,
+  "benchmarks": {
+    "bertrand": 1.473,
+    "monopoly": 1.925
+  },
+  "agents": [
+    {
+      "id": "challenger_0",
+      "cohort": "challenger",
+      "name": "Challenger",
+      "persona": "aggressive, willing to undercut to test share",
+      "policy": "deterministic",
+      "cost": 1.0
+    },
+    {
+      "id": "incumbent_0",
+      "cohort": "incumbent",
+      "name": "Incumbent",
+      "persona": "cautious price-setter, high margin focus",
+      "policy": "deterministic",
+      "cost": 1.0
+    }
+  ],
+  "series": {
+    "round": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48
+    ],
+    "mean_price": [
+      1.48822,
+      1.4974,
+      1.50817,
+      1.5339,
+      1.5569,
+      1.57383,
+      1.59029,
+      1.61951,
+      1.64072,
+      1.6544,
+      1.65993,
+      1.68689,
+      1.7124,
+      1.71907,
+      1.72466,
+      1.72689,
+      1.74295,
+      1.75987,
+      1.758,
+      1.77251,
+      1.79056,
+      1.79025,
+      1.79517,
+      1.79802,
+      1.80161,
+      1.80015,
+      1.81581,
+      1.82284,
+      1.82435,
+      1.82424,
+      1.81961,
+      1.84392,
+      1.84457,
+      1.84291,
+      1.85691,
+      1.86237,
+      1.85102,
+      1.84515,
+      1.84464,
+      1.84398,
+      1.84359,
+      1.85327,
+      1.86343,
+      1.87401,
+      1.87749,
+      1.8679,
+      1.88068,
+      1.88116
+    ],
+    "collusion_index": [
+      0.03367,
+      0.05397,
+      0.07781,
+      0.13475,
+      0.18562,
+      0.22306,
+      0.2595,
+      0.32415,
+      0.37105,
+      0.40132,
+      0.41357,
+      0.47321,
+      0.52966,
+      0.5444,
+      0.55678,
+      0.5617,
+      0.59725,
+      0.63466,
+      0.63054,
+      0.66264,
+      0.70257,
+      0.70187,
+      0.71277,
+      0.71908,
+      0.72702,
+      0.72378,
+      0.75842,
+      0.77398,
+      0.77733,
+      0.77708,
+      0.76685,
+      0.82062,
+      0.82206,
+      0.81837,
+      0.84935,
+      0.86143,
+      0.83632,
+      0.82333,
+      0.82222,
+      0.82075,
+      0.81988,
+      0.84131,
+      0.86379,
+      0.8872,
+      0.89489,
+      0.87367,
+      0.90195,
+      0.903
+    ],
+    "total_profit": [
+      0.45751,
+      0.46504,
+      0.47476,
+      0.49483,
+      0.5122,
+      0.52591,
+      0.53802,
+      0.558,
+      0.5726,
+      0.58138,
+      0.58487,
+      0.60056,
+      0.61493,
+      0.61844,
+      0.62115,
+      0.62229,
+      0.6295,
+      0.63782,
+      0.63702,
+      0.643,
+      0.64987,
+      0.64941,
+      0.651,
+      0.65257,
+      0.65363,
+      0.65325,
+      0.6581,
+      0.66025,
+      0.66064,
+      0.66036,
+      0.65929,
+      0.66562,
+      0.66551,
+      0.66475,
+      0.66834,
+      0.66929,
+      0.66719,
+      0.66583,
+      0.66578,
+      0.66558,
+      0.66557,
+      0.66765,
+      0.66952,
+      0.67116,
+      0.67167,
+      0.6702,
+      0.67215,
+      0.67216
+    ],
+    "by_agent_price": {
+      "challenger_0": [
+        1.47057,
+        1.47933,
+        1.50063,
+        1.51985,
+        1.53887,
+        1.56843,
+        1.59289,
+        1.63272,
+        1.64601,
+        1.65019,
+        1.65752,
+        1.67449,
+        1.70527,
+        1.72486,
+        1.73389,
+        1.73565,
+        1.75975,
+        1.75832,
+        1.75683,
+        1.77795,
+        1.78468,
+        1.77674,
+        1.77932,
+        1.79964,
+        1.79335,
+        1.79568,
+        1.82441,
+        1.81778,
+        1.81818,
+        1.81169,
+        1.81278,
+        1.83979,
+        1.85631,
+        1.86099,
+        1.86034,
+        1.86891,
+        1.85281,
+        1.85206,
+        1.84839,
+        1.85021,
+        1.84328,
+        1.85456,
+        1.85924,
+        1.86707,
+        1.87165,
+        1.8603,
+        1.88219,
+        1.88659
+      ],
+      "incumbent_0": [
+        1.50587,
+        1.51546,
+        1.51571,
+        1.54796,
+        1.57493,
+        1.57922,
+        1.5877,
+        1.60631,
+        1.63542,
+        1.6586,
+        1.66235,
+        1.69929,
+        1.71954,
+        1.71328,
+        1.71544,
+        1.71813,
+        1.72616,
+        1.76141,
+        1.75918,
+        1.76708,
+        1.79644,
+        1.80375,
+        1.81102,
+        1.79641,
+        1.80988,
+        1.80462,
+        1.8072,
+        1.8279,
+        1.83053,
+        1.83679,
+        1.82645,
+        1.84805,
+        1.83283,
+        1.82482,
+        1.85347,
+        1.85582,
+        1.84922,
+        1.83823,
+        1.8409,
+        1.83775,
+        1.84389,
+        1.85198,
+        1.86763,
+        1.88096,
+        1.88333,
+        1.8755,
+        1.87917,
+        1.87572
+      ]
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "news": "rivals quoting ~1.48",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.47057,
+          "profit": 0.23663,
+          "realized": {
+            "price": 1.47057,
+            "qty": 0.50286,
+            "profit": 0.23663
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.4705679834840757
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.50587,
+          "profit": 0.22088,
+          "realized": {
+            "price": 1.50587,
+            "qty": 0.43664,
+            "profit": 0.22088
+          },
+          "beliefs": {
+            "expected_rival_price": 1.45,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5058691615282573
+          }
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "news": "rivals quoting ~1.49",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.47933,
+          "profit": 0.24087,
+          "realized": {
+            "price": 1.47933,
+            "qty": 0.50251,
+            "profit": 0.24087
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5059,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.479329197507717
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.51546,
+          "profit": 0.22417,
+          "realized": {
+            "price": 1.51546,
+            "qty": 0.43488,
+            "profit": 0.22417
+          },
+          "beliefs": {
+            "expected_rival_price": 1.4706,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5154624738279667
+          }
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "news": "rivals quoting ~1.50",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.50063,
+          "profit": 0.24102,
+          "realized": {
+            "price": 1.50063,
+            "qty": 0.48143,
+            "profit": 0.24102
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5155,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5006250180195468
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.51571,
+          "profit": 0.23374,
+          "realized": {
+            "price": 1.51571,
+            "qty": 0.45325,
+            "profit": 0.23374
+          },
+          "beliefs": {
+            "expected_rival_price": 1.4793,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5157081443706106
+          }
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "news": "rivals quoting ~1.51",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.51985,
+          "profit": 0.25481,
+          "realized": {
+            "price": 1.51985,
+            "qty": 0.49015,
+            "profit": 0.25481
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5157,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5198497133572666
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.54796,
+          "profit": 0.24002,
+          "realized": {
+            "price": 1.54796,
+            "qty": 0.43803,
+            "profit": 0.24002
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5006,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5479583742374632
+          }
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "news": "rivals quoting ~1.53",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.53887,
+          "profit": 0.26627,
+          "realized": {
+            "price": 1.53887,
+            "qty": 0.49412,
+            "profit": 0.26627
+          },
+          "beliefs": {
+            "expected_rival_price": 1.548,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5388714808239539
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.57493,
+          "profit": 0.24593,
+          "realized": {
+            "price": 1.57493,
+            "qty": 0.42775,
+            "profit": 0.24593
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5198,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Probing just above marginal cost to read how rivals respond.",
+          "action": {
+            "price": 1.5749304310448842
+          }
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "news": "rivals quoting ~1.56",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.56843,
+          "profit": 0.26616,
+          "realized": {
+            "price": 1.56843,
+            "qty": 0.46823,
+            "profit": 0.26616
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5749,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.5684334977148986
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.57922,
+          "profit": 0.25975,
+          "realized": {
+            "price": 1.57922,
+            "qty": 0.44845,
+            "profit": 0.25975
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5389,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.579219362471052
+          }
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "news": "rivals quoting ~1.57",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.59289,
+          "profit": 0.2674,
+          "realized": {
+            "price": 1.59289,
+            "qty": 0.45102,
+            "profit": 0.2674
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5792,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.5928888165945387
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.5877,
+          "profit": 0.27062,
+          "realized": {
+            "price": 1.5877,
+            "qty": 0.46047,
+            "profit": 0.27062
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5684,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.5877019254341624
+          }
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "news": "rivals quoting ~1.59",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.63272,
+          "profit": 0.27021,
+          "realized": {
+            "price": 1.63272,
+            "qty": 0.42707,
+            "profit": 0.27021
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5877,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6327184027882586
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.60631,
+          "profit": 0.28779,
+          "realized": {
+            "price": 1.60631,
+            "qty": 0.47465,
+            "profit": 0.28779
+          },
+          "beliefs": {
+            "expected_rival_price": 1.5929,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.606309140657855
+          }
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "news": "rivals quoting ~1.62",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.64601,
+          "profit": 0.2826,
+          "realized": {
+            "price": 1.64601,
+            "qty": 0.43745,
+            "profit": 0.2826
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6063,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6460138951177303
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.63542,
+          "profit": 0.29,
+          "realized": {
+            "price": 1.63542,
+            "qty": 0.45639,
+            "profit": 0.29
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6327,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6354161481533658
+          }
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "news": "rivals quoting ~1.64",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.65019,
+          "profit": 0.29371,
+          "realized": {
+            "price": 1.65019,
+            "qty": 0.45173,
+            "profit": 0.29371
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6354,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6501906620125806
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.6586,
+          "profit": 0.28767,
+          "realized": {
+            "price": 1.6586,
+            "qty": 0.43679,
+            "profit": 0.28767
+          },
+          "beliefs": {
+            "expected_rival_price": 1.646,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.658600346476652
+          }
+        }
+      ]
+    },
+    {
+      "round": 11,
+      "news": "rivals quoting ~1.65",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.65752,
+          "profit": 0.29419,
+          "realized": {
+            "price": 1.65752,
+            "qty": 0.44743,
+            "profit": 0.29419
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6586,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6575171924313379
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.66235,
+          "profit": 0.29068,
+          "realized": {
+            "price": 1.66235,
+            "qty": 0.43886,
+            "profit": 0.29068
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6502,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6623509249030595
+          }
+        }
+      ]
+    },
+    {
+      "round": 12,
+      "news": "rivals quoting ~1.66",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.67449,
+          "profit": 0.30975,
+          "realized": {
+            "price": 1.67449,
+            "qty": 0.45923,
+            "profit": 0.30975
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6624,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.6744921464412466
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.69929,
+          "profit": 0.29081,
+          "realized": {
+            "price": 1.69929,
+            "qty": 0.41586,
+            "profit": 0.29081
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6575,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.699293140328591
+          }
+        }
+      ]
+    },
+    {
+      "round": 13,
+      "news": "rivals quoting ~1.69",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.70527,
+          "profit": 0.31316,
+          "realized": {
+            "price": 1.70527,
+            "qty": 0.44403,
+            "profit": 0.31316
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6993,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.7052711105140688
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.71954,
+          "profit": 0.30177,
+          "realized": {
+            "price": 1.71954,
+            "qty": 0.41939,
+            "profit": 0.30177
+          },
+          "beliefs": {
+            "expected_rival_price": 1.6745,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.719543169476129
+          }
+        }
+      ]
+    },
+    {
+      "round": 14,
+      "news": "rivals quoting ~1.71",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.72486,
+          "profit": 0.30455,
+          "realized": {
+            "price": 1.72486,
+            "qty": 0.42015,
+            "profit": 0.30455
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7195,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.7248599786382315
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.71328,
+          "profit": 0.31389,
+          "realized": {
+            "price": 1.71328,
+            "qty": 0.44007,
+            "profit": 0.31389
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7053,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.7132847462357956
+          }
+        }
+      ]
+    },
+    {
+      "round": 15,
+      "news": "rivals quoting ~1.72",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.73389,
+          "profit": 0.30307,
+          "realized": {
+            "price": 1.73389,
+            "qty": 0.41296,
+            "profit": 0.30307
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7133,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.73389423428946
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.71544,
+          "profit": 0.31808,
+          "realized": {
+            "price": 1.71544,
+            "qty": 0.4446,
+            "profit": 0.31808
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7249,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Rival matched my last raise — stepping price up toward the focal point.",
+          "action": {
+            "price": 1.7154414918454606
+          }
+        }
+      ]
+    },
+    {
+      "round": 16,
+      "news": "rivals quoting ~1.72",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.73565,
+          "profit": 0.30399,
+          "realized": {
+            "price": 1.73565,
+            "qty": 0.41323,
+            "profit": 0.30399
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7154,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7356511353200113
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.71813,
+          "profit": 0.3183,
+          "realized": {
+            "price": 1.71813,
+            "qty": 0.44323,
+            "profit": 0.3183
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7339,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7181327203801695
+          }
+        }
+      ]
+    },
+    {
+      "round": 17,
+      "news": "rivals quoting ~1.73",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.75975,
+          "profit": 0.30073,
+          "realized": {
+            "price": 1.75975,
+            "qty": 0.39583,
+            "profit": 0.30073
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7181,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7597487940415293
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.72616,
+          "profit": 0.32877,
+          "realized": {
+            "price": 1.72616,
+            "qty": 0.45276,
+            "profit": 0.32877
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7357,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7261566188418693
+          }
+        }
+      ]
+    },
+    {
+      "round": 18,
+      "news": "rivals quoting ~1.74",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.75832,
+          "profit": 0.32023,
+          "realized": {
+            "price": 1.75832,
+            "qty": 0.42229,
+            "profit": 0.32023
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7262,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7583190215151976
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.76141,
+          "profit": 0.31759,
+          "realized": {
+            "price": 1.76141,
+            "qty": 0.41711,
+            "profit": 0.31759
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7597,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7614057083881198
+          }
+        }
+      ]
+    },
+    {
+      "round": 19,
+      "news": "rivals quoting ~1.76",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.75683,
+          "profit": 0.31951,
+          "realized": {
+            "price": 1.75683,
+            "qty": 0.42217,
+            "profit": 0.31951
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7614,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7568302952290582
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.75918,
+          "profit": 0.31751,
+          "realized": {
+            "price": 1.75918,
+            "qty": 0.41822,
+            "profit": 0.31751
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7583,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7591779141553066
+          }
+        }
+      ]
+    },
+    {
+      "round": 20,
+      "news": "rivals quoting ~1.76",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.77795,
+          "profit": 0.31677,
+          "realized": {
+            "price": 1.77795,
+            "qty": 0.40719,
+            "profit": 0.31677
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7592,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.777952681345836
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.76708,
+          "profit": 0.32623,
+          "realized": {
+            "price": 1.76708,
+            "qty": 0.42529,
+            "profit": 0.32623
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7568,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7670780710263354
+          }
+        }
+      ]
+    },
+    {
+      "round": 21,
+      "news": "rivals quoting ~1.77",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.78468,
+          "profit": 0.33016,
+          "realized": {
+            "price": 1.78468,
+            "qty": 0.42076,
+            "profit": 0.33016
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7671,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.784678658355834
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.79644,
+          "profit": 0.31971,
+          "realized": {
+            "price": 1.79644,
+            "qty": 0.40142,
+            "profit": 0.31971
+          },
+          "beliefs": {
+            "expected_rival_price": 1.778,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7964421237059682
+          }
+        }
+      ]
+    },
+    {
+      "round": 22,
+      "news": "rivals quoting ~1.79",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.77674,
+          "profit": 0.33669,
+          "realized": {
+            "price": 1.77674,
+            "qty": 0.43346,
+            "profit": 0.33669
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7964,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7767418424499895
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.80375,
+          "profit": 0.31272,
+          "realized": {
+            "price": 1.80375,
+            "qty": 0.38907,
+            "profit": 0.31272
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7847,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.8037504668851505
+          }
+        }
+      ]
+    },
+    {
+      "round": 23,
+      "news": "rivals quoting ~1.79",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.77932,
+          "profit": 0.33964,
+          "realized": {
+            "price": 1.77932,
+            "qty": 0.43581,
+            "profit": 0.33964
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8038,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.779322016691105
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.81102,
+          "profit": 0.31136,
+          "realized": {
+            "price": 1.81102,
+            "qty": 0.38391,
+            "profit": 0.31136
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7767,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.8110194329143643
+          }
+        }
+      ]
+    },
+    {
+      "round": 24,
+      "news": "rivals quoting ~1.80",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.79964,
+          "profit": 0.32484,
+          "realized": {
+            "price": 1.79964,
+            "qty": 0.40623,
+            "profit": 0.32484
+          },
+          "beliefs": {
+            "expected_rival_price": 1.811,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7996401895164458
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.79641,
+          "profit": 0.32773,
+          "realized": {
+            "price": 1.79641,
+            "qty": 0.4115,
+            "profit": 0.32773
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7793,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.79641389114475
+          }
+        }
+      ]
+    },
+    {
+      "round": 25,
+      "news": "rivals quoting ~1.80",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.79335,
+          "profit": 0.33425,
+          "realized": {
+            "price": 1.79335,
+            "qty": 0.42131,
+            "profit": 0.33425
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7964,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.793345478776218
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.80988,
+          "profit": 0.31938,
+          "realized": {
+            "price": 1.80988,
+            "qty": 0.39435,
+            "profit": 0.31938
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7996,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.8098783994393612
+          }
+        }
+      ]
+    },
+    {
+      "round": 26,
+      "news": "rivals quoting ~1.80",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.79568,
+          "profit": 0.33064,
+          "realized": {
+            "price": 1.79568,
+            "qty": 0.41554,
+            "profit": 0.33064
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8099,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.7956794088222947
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.80462,
+          "profit": 0.32261,
+          "realized": {
+            "price": 1.80462,
+            "qty": 0.40094,
+            "profit": 0.32261
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7933,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.8046217820118058
+          }
+        }
+      ]
+    },
+    {
+      "round": 27,
+      "news": "rivals quoting ~1.80",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.82441,
+          "profit": 0.3212,
+          "realized": {
+            "price": 1.82441,
+            "qty": 0.38961,
+            "profit": 0.3212
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8046,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.8244079559431294
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.8072,
+          "profit": 0.3369,
+          "realized": {
+            "price": 1.8072,
+            "qty": 0.41738,
+            "profit": 0.3369
+          },
+          "beliefs": {
+            "expected_rival_price": 1.7957,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Coordination holding; margins improve each round, so I keep nudging up.",
+          "action": {
+            "price": 1.807197027702875
+          }
+        }
+      ]
+    },
+    {
+      "round": 28,
+      "news": "rivals quoting ~1.82",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.81778,
+          "profit": 0.33478,
+          "realized": {
+            "price": 1.81778,
+            "qty": 0.40937,
+            "profit": 0.33478
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8072,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8177818854344971
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.8279,
+          "profit": 0.32547,
+          "realized": {
+            "price": 1.8279,
+            "qty": 0.39313,
+            "profit": 0.32547
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8244,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8279041483754126
+          }
+        }
+      ]
+    },
+    {
+      "round": 29,
+      "news": "rivals quoting ~1.82",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.81818,
+          "profit": 0.336,
+          "realized": {
+            "price": 1.81818,
+            "qty": 0.41067,
+            "profit": 0.336
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8279,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8181780670172303
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.83053,
+          "profit": 0.32464,
+          "realized": {
+            "price": 1.83053,
+            "qty": 0.39088,
+            "profit": 0.32464
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8178,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8305258038388743
+          }
+        }
+      ]
+    },
+    {
+      "round": 30,
+      "news": "rivals quoting ~1.82",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.81169,
+          "profit": 0.34172,
+          "realized": {
+            "price": 1.81169,
+            "qty": 0.42099,
+            "profit": 0.34172
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8305,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.81169314929963
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.83679,
+          "profit": 0.31864,
+          "realized": {
+            "price": 1.83679,
+            "qty": 0.38078,
+            "profit": 0.31864
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8182,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.836789868143127
+          }
+        }
+      ]
+    },
+    {
+      "round": 31,
+      "news": "rivals quoting ~1.82",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.81278,
+          "profit": 0.33591,
+          "realized": {
+            "price": 1.81278,
+            "qty": 0.41328,
+            "profit": 0.33591
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8368,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8127793097556408
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.82645,
+          "profit": 0.32338,
+          "realized": {
+            "price": 1.82645,
+            "qty": 0.39128,
+            "profit": 0.32338
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8117,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8264529581432125
+          }
+        }
+      ]
+    },
+    {
+      "round": 32,
+      "news": "rivals quoting ~1.82",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.83979,
+          "profit": 0.33668,
+          "realized": {
+            "price": 1.83979,
+            "qty": 0.40091,
+            "profit": 0.33668
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8265,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8397893694190681
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.84805,
+          "profit": 0.32894,
+          "realized": {
+            "price": 1.84805,
+            "qty": 0.38788,
+            "profit": 0.32894
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8128,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8480495723912693
+          }
+        }
+      ]
+    },
+    {
+      "round": 33,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85631,
+          "profit": 0.32176,
+          "realized": {
+            "price": 1.85631,
+            "qty": 0.37576,
+            "profit": 0.32176
+          },
+          "beliefs": {
+            "expected_rival_price": 1.848,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8563055152383758
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.83283,
+          "profit": 0.34375,
+          "realized": {
+            "price": 1.83283,
+            "qty": 0.41275,
+            "profit": 0.34375
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8398,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8328293297092184
+          }
+        }
+      ]
+    },
+    {
+      "round": 34,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.86099,
+          "profit": 0.31548,
+          "realized": {
+            "price": 1.86099,
+            "qty": 0.36641,
+            "profit": 0.31548
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8328,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8609907761704356
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.82482,
+          "profit": 0.34927,
+          "realized": {
+            "price": 1.82482,
+            "qty": 0.42346,
+            "profit": 0.34927
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8563,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8248196620934691
+          }
+        }
+      ]
+    },
+    {
+      "round": 35,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.86034,
+          "profit": 0.33092,
+          "realized": {
+            "price": 1.86034,
+            "qty": 0.38464,
+            "profit": 0.33092
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8248,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8603379935729032
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.85347,
+          "profit": 0.33742,
+          "realized": {
+            "price": 1.85347,
+            "qty": 0.39535,
+            "profit": 0.33742
+          },
+          "beliefs": {
+            "expected_rival_price": 1.861,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8534724034694514
+          }
+        }
+      ]
+    },
+    {
+      "round": 36,
+      "news": "rivals quoting ~1.86",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.86891,
+          "profit": 0.32842,
+          "realized": {
+            "price": 1.86891,
+            "qty": 0.37797,
+            "profit": 0.32842
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8535,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8689149434888745
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.85582,
+          "profit": 0.34087,
+          "realized": {
+            "price": 1.85582,
+            "qty": 0.3983,
+            "profit": 0.34087
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8603,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8558160809458715
+          }
+        }
+      ]
+    },
+    {
+      "round": 37,
+      "news": "rivals quoting ~1.86",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85281,
+          "profit": 0.3319,
+          "realized": {
+            "price": 1.85281,
+            "qty": 0.38918,
+            "profit": 0.3319
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8558,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.852813550111452
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.84922,
+          "profit": 0.33529,
+          "realized": {
+            "price": 1.84922,
+            "qty": 0.39482,
+            "profit": 0.33529
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8689,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8492166284669447
+          }
+        }
+      ]
+    },
+    {
+      "round": 38,
+      "news": "rivals quoting ~1.85",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85206,
+          "profit": 0.32643,
+          "realized": {
+            "price": 1.85206,
+            "qty": 0.38311,
+            "profit": 0.32643
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8492,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.85206040375021
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.83823,
+          "profit": 0.3394,
+          "realized": {
+            "price": 1.83823,
+            "qty": 0.4049,
+            "profit": 0.3394
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8528,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8382267997974433
+          }
+        }
+      ]
+    },
+    {
+      "round": 39,
+      "news": "rivals quoting ~1.85",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.84839,
+          "profit": 0.32938,
+          "realized": {
+            "price": 1.84839,
+            "qty": 0.38824,
+            "profit": 0.32938
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8382,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8483942938919282
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.8409,
+          "profit": 0.3364,
+          "realized": {
+            "price": 1.8409,
+            "qty": 0.40005,
+            "profit": 0.3364
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8521,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.840902005496714
+          }
+        }
+      ]
+    },
+    {
+      "round": 40,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85021,
+          "profit": 0.32696,
+          "realized": {
+            "price": 1.85021,
+            "qty": 0.38457,
+            "profit": 0.32696
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8409,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8502055798022463
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.83775,
+          "profit": 0.33862,
+          "realized": {
+            "price": 1.83775,
+            "qty": 0.40421,
+            "profit": 0.33862
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8484,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8377536035799715
+          }
+        }
+      ]
+    },
+    {
+      "round": 41,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.84328,
+          "profit": 0.33307,
+          "realized": {
+            "price": 1.84328,
+            "qty": 0.39497,
+            "profit": 0.33307
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8378,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8432786944703894
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.84389,
+          "profit": 0.3325,
+          "realized": {
+            "price": 1.84389,
+            "qty": 0.39401,
+            "profit": 0.3325
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8502,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.843886981447479
+          }
+        }
+      ]
+    },
+    {
+      "round": 42,
+      "news": "rivals quoting ~1.84",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85456,
+          "profit": 0.33261,
+          "realized": {
+            "price": 1.85456,
+            "qty": 0.38922,
+            "profit": 0.33261
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8439,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8545593335250223
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.85198,
+          "profit": 0.33504,
+          "realized": {
+            "price": 1.85198,
+            "qty": 0.39325,
+            "profit": 0.33504
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8433,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.851982997936924
+          }
+        }
+      ]
+    },
+    {
+      "round": 43,
+      "news": "rivals quoting ~1.85",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.85924,
+          "profit": 0.33875,
+          "realized": {
+            "price": 1.85924,
+            "qty": 0.39425,
+            "profit": 0.33875
+          },
+          "beliefs": {
+            "expected_rival_price": 1.852,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8592360248265676
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.86763,
+          "profit": 0.33077,
+          "realized": {
+            "price": 1.86763,
+            "qty": 0.38124,
+            "profit": 0.33077
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8546,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.86762843957041
+          }
+        }
+      ]
+    },
+    {
+      "round": 44,
+      "news": "rivals quoting ~1.86",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.86707,
+          "profit": 0.34224,
+          "realized": {
+            "price": 1.86707,
+            "qty": 0.39471,
+            "profit": 0.34224
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8676,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8670668267372743
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.88096,
+          "profit": 0.32892,
+          "realized": {
+            "price": 1.88096,
+            "qty": 0.37337,
+            "profit": 0.32892
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8592,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8809624013302992
+          }
+        }
+      ]
+    },
+    {
+      "round": 45,
+      "news": "rivals quoting ~1.87",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.87165,
+          "profit": 0.34144,
+          "realized": {
+            "price": 1.87165,
+            "qty": 0.39172,
+            "profit": 0.34144
+          },
+          "beliefs": {
+            "expected_rival_price": 1.881,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8716534077078422
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.88333,
+          "profit": 0.33023,
+          "realized": {
+            "price": 1.88333,
+            "qty": 0.37385,
+            "profit": 0.33023
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8671,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.883327376423417
+          }
+        }
+      ]
+    },
+    {
+      "round": 46,
+      "news": "rivals quoting ~1.88",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.8603,
+          "profit": 0.34235,
+          "realized": {
+            "price": 1.8603,
+            "qty": 0.39795,
+            "profit": 0.34235
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8833,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8602992083081769
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.8755,
+          "profit": 0.32785,
+          "realized": {
+            "price": 1.8755,
+            "qty": 0.37447,
+            "profit": 0.32785
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8717,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8755038786439204
+          }
+        }
+      ]
+    },
+    {
+      "round": 47,
+      "news": "rivals quoting ~1.87",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.88219,
+          "profit": 0.33462,
+          "realized": {
+            "price": 1.88219,
+            "qty": 0.37931,
+            "profit": 0.33462
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8755,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8821851934719485
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.87917,
+          "profit": 0.33753,
+          "realized": {
+            "price": 1.87917,
+            "qty": 0.38392,
+            "profit": 0.33753
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8603,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8791687851071175
+          }
+        }
+      ]
+    },
+    {
+      "round": 48,
+      "news": "rivals quoting ~1.88",
+      "agents": [
+        {
+          "id": "challenger_0",
+          "cost": 1.0,
+          "price": 1.88659,
+          "profit": 0.33084,
+          "realized": {
+            "price": 1.88659,
+            "qty": 0.37316,
+            "profit": 0.33084
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8792,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8865940545619726
+          }
+        },
+        {
+          "id": "incumbent_0",
+          "cost": 1.0,
+          "price": 1.87572,
+          "profit": 0.34132,
+          "realized": {
+            "price": 1.87572,
+            "qty": 0.38976,
+            "profit": 0.34132
+          },
+          "beliefs": {
+            "expected_rival_price": 1.8822,
+            "plans": "match raises, resist cuts"
+          },
+          "reasoning": "Price sits comfortably above the competitive level. Maintaining — no reason to cut.",
+          "action": {
+            "price": 1.8757173419065476
+          }
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "final_mean_price": 1.863,
+    "bertrand": 1.473,
+    "monopoly": 1.925,
+    "monopoly_gap": 0.062,
+    "collusion_index": 0.8629,
+    "inflation": null,
+    "unemployment": null,
+    "fat_tail_kurtosis": null
+  }
+}

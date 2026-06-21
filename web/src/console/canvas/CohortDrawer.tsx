@@ -1,0 +1,55 @@
+import { useStore } from "../../store";
+
+const serif = "'Spectral',serif";
+const mono = "'Spline Sans Mono',monospace";
+
+function stagesFor(mech: string) {
+  const profile = mech === "fish" ? "cost · type · bias" : mech === "econ" ? "income · age · bias" : "wealth · risk · bias";
+  const perceive = mech === "fish" ? "reads price · news" : mech === "econ" ? "reads wages · prices" : "reads book · news · sentiment";
+  return [
+    { t: "Profile", s: profile },
+    { t: "Perception", s: perceive },
+    { t: "Memory + Reflection", s: "notepad · pool · BDI" },
+    { t: "Decision", s: "LLM → action" },
+  ];
+}
+
+export function CohortDrawer() {
+  const expanded = useStore((s) => s.expanded);
+  const cohorts = useStore((s) => s.cohorts);
+  const mech = useStore((s) => s.mech);
+  const collapse = useStore((s) => s.collapse);
+  const co = cohorts.find((c) => c.id === expanded);
+  if (!co) return null;
+  const stages = stagesFor(mech);
+
+  return (
+    <>
+      <div onClick={collapse} style={{ position: "absolute", left: 0, right: 0, top: 58, bottom: 56, background: "rgba(251,251,250,.55)", backdropFilter: "blur(1px)", zIndex: 14 }} />
+      <div style={{ position: "absolute", left: 18, right: 18, bottom: 64, zIndex: 15, background: "#fff", border: "1px solid var(--border)", borderRadius: 16, boxShadow: "0 24px 60px -24px rgba(20,40,28,.5)", padding: "18px 20px", animation: "mw-fade .18s ease" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: "var(--green-l)", color: "var(--green-d)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>◎</span>
+            <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 17 }}>{co.name} ×{co.n} · internal pipeline</span>
+          </div>
+          <span onClick={collapse} style={{ fontSize: 20, color: "#aab3ab", cursor: "pointer", lineHeight: 1 }}>×</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "stretch", gap: 0, overflowX: "auto", paddingBottom: 4 }}>
+          {stages.map((st, i) => (
+            <div key={i} style={{ display: "contents" }}>
+              <div style={{ flex: 1, minWidth: 130, background: "#f4faf6", border: "1px solid #d7ebe0", borderRadius: 12, padding: "13px 14px" }}>
+                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--green-d)" }}>{st.t}</div>
+                <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{st.s}</div>
+              </div>
+              <span style={{ flex: "none", display: "flex", alignItems: "center", padding: "0 10px", color: "#9fb0a6", fontSize: 16 }}>→</span>
+            </div>
+          ))}
+          <div style={{ flex: "none", width: 150, background: "var(--indigo-l)", border: "1px solid var(--indigo-bd)", borderRadius: 12, padding: "13px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--indigo)" }}>action</div>
+            <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>schema set by market</div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
