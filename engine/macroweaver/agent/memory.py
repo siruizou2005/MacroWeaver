@@ -102,8 +102,12 @@ class BDIMemory(Memory):
             self.intention = decision.beliefs.get("intention", self.intention) or self.intention
 
     def add_insight(self, insight: str) -> None:
+        # `intention` is otherwise never populated: no decision_schema (Fish/EconAgent/
+        # CLOB) emits a "belief"/"intention" key for BDIMemory.store() to pick up, so the
+        # reflection-derived insight is the only thing keeping this slot alive.
         if insight:
             self.belief = insight
+            self.intention = insight
 
 
 def make_memory(kind: str) -> Memory:
