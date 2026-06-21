@@ -12,6 +12,78 @@ import { Inspector } from "../console/rail/Inspector";
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
 
+// Save button that, on click, saves to the library AND pops a small panel
+// offering to publish the world to Markets (just needs a nickname).
+function SaveShare() {
+  const saveCurrentConfig = useStore((s) => s.saveCurrentConfig);
+  const publishConfig = useStore((s) => s.publishConfig);
+  const [open, setOpen] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [nick, setNick] = useState(() => loadDefaults().nickname || "");
+  const [pub, setPub] = useState<string | null>(null);
+
+  const doSave = async () => {
+    setOpen(true);
+    setPub(null);
+    setSaveMsg("saving…");
+    const id = await saveCurrentConfig();
+    setSaveMsg(id ? `Saved to library · configs/${id}.yaml` : "Save failed");
+  };
+  const doPublish = async () => {
+    const author = nick.trim();
+    if (!author) return;
+    saveDefaults({ ...loadDefaults(), nickname: author }); // remember the nickname
+    setPub("publishing…");
+    const id = await publishConfig(author);
+    setPub(id ? `Published to Markets · by ${author}` : "Publish failed");
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={doSave}
+        title="Save & share this world"
+        style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "var(--green-d)", background: open ? "var(--green-l)" : "#fff", border: "1px solid var(--border)", padding: "9px 14px", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap" }}
+      >
+        Save ▾
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }} />
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 31, width: 308, background: "#fff", border: "1px solid var(--border)", borderRadius: 13, boxShadow: "0 18px 50px -20px rgba(20,40,28,.45)", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--green-l)", color: "var(--green-d)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flex: "none" }}>✓</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--green-d)" }}>{saveMsg}</span>
+            </div>
+            <div style={{ height: 1, background: "var(--border)", margin: "13px 0" }} />
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>Publish to Markets</div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45, marginBottom: 10 }}>Share this world to the Markets gallery — just enter a nickname.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={nick}
+                autoFocus
+                onChange={(e) => { setNick(e.target.value); setPub(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") doPublish(); }}
+                placeholder="your nickname"
+                spellCheck={false}
+                style={{ flex: 1, minWidth: 0, fontFamily: mono, fontSize: 12.5, color: "var(--green-d)", background: "#f7faf8", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}
+              />
+              <button
+                onClick={doPublish}
+                disabled={!nick.trim()}
+                style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--indigo)", border: "none", padding: "8px 14px", borderRadius: 8, cursor: nick.trim() ? "pointer" : "not-allowed", opacity: nick.trim() ? 1 : 0.5, flex: "none" }}
+              >
+                Publish
+              </button>
+            </div>
+            {pub && <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--muted)", fontFamily: mono }}>{pub}</div>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Toolbar() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
@@ -24,8 +96,6 @@ function Toolbar() {
   const backToPicker = useStore((s) => s.backToPicker);
   const toggleConfigView = useStore((s) => s.toggleConfigView);
   const showConfig = useStore((s) => s.showConfig);
-  const saveCurrentConfig = useStore((s) => s.saveCurrentConfig);
-  const [saved, setSaved] = useState(false);
 
   const seg = (v: "arena" | "roster" | "engine", label: string) => {
     const on = view === v;
@@ -48,7 +118,7 @@ function Toolbar() {
           value={runName}
           spellCheck={false}
           aria-label="run name"
-          onChange={(e) => { setRunName(e.target.value); setSaved(false); }}
+          onChange={(e) => setRunName(e.target.value)}
           onFocus={(e) => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "var(--border)"; }}
           onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
           style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, color: "var(--ink)", border: "1px solid transparent", borderRadius: 7, padding: "3px 7px", background: "transparent", minWidth: 60, width: `${Math.min(34, Math.max(8, runName.length + 1))}ch`, maxWidth: 320 }}
@@ -61,13 +131,7 @@ function Toolbar() {
           {seg("roster", "Roster")}
           {seg("engine", "Engine")}
         </div>
-        <button
-          onClick={async () => { const id = await saveCurrentConfig(); setSaved(!!id); }}
-          title="Save to your library"
-          style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "var(--green-d)", background: saved ? "var(--green-l)" : "#fff", border: "1px solid var(--border)", padding: "9px 14px", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap" }}
-        >
-          {saved ? "Saved ✓" : "Save"}
-        </button>
+        <SaveShare />
         <button
           onClick={toggleConfigView}
           style={{ fontFamily: mono, fontSize: 13, fontWeight: 600, color: showConfig ? "var(--green-d)" : "var(--muted)", background: showConfig ? "var(--green-l)" : "#fff", border: "1px solid var(--border)", padding: "9px 13px", borderRadius: 9, cursor: "pointer" }}
@@ -91,10 +155,7 @@ function ConfigPanel() {
   const s = useStore();
   const toggleConfigView = useStore((st) => st.toggleConfigView);
   const saveCurrentConfig = useStore((st) => st.saveCurrentConfig);
-  const publishConfig = useStore((st) => st.publishConfig);
   const [status, setStatus] = useState<string | null>(null);
-  const [nick, setNick] = useState(() => loadDefaults().nickname || "");
-  const [pub, setPub] = useState<string | null>(null);
   const cfg = buildConfig(s);
   const json = JSON.stringify(cfg, null, 2);
 
@@ -103,15 +164,6 @@ function ConfigPanel() {
     color: primary ? "#fff" : "var(--green-d)", background: primary ? "var(--green)" : "#fff",
     border: primary ? "none" : "1px solid var(--border)",
   });
-
-  const publish = async () => {
-    const author = nick.trim();
-    if (!author) return;
-    saveDefaults({ ...loadDefaults(), nickname: author }); // remember the nickname
-    setPub("publishing…");
-    const id = await publishConfig(author);
-    setPub(id ? `published to Markets as “${id}” · by ${author}` : "publish failed");
-  };
 
   return (
     <div
@@ -127,36 +179,16 @@ function ConfigPanel() {
           <span onClick={toggleConfigView} style={{ fontSize: 20, color: "#aab3ab", cursor: "pointer", lineHeight: 1 }}>×</span>
         </div>
         <pre style={{ margin: 0, padding: "16px 20px", overflow: "auto", fontFamily: mono, fontSize: 12, lineHeight: 1.5, color: "var(--green-d)", background: "#fbfdfb", flex: 1 }}>{json}</pre>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "14px 20px", borderTop: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button
-              style={btn(true)}
-              onClick={async () => { setStatus("saving…"); const id = await saveCurrentConfig(); setStatus(id ? `saved → configs/${id}.yaml` : "save failed"); }}
-            >
-              Save to library
-            </button>
-            <button style={btn(false)} onClick={() => navigator.clipboard?.writeText(json)}>Copy JSON</button>
-            {status && <span style={{ fontSize: 12.5, color: "var(--muted)", fontFamily: mono }}>{status}</span>}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid var(--border)", paddingTop: 12, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)" }}>Publish to Markets</span>
-            <input
-              value={nick}
-              onChange={(e) => { setNick(e.target.value); setPub(null); }}
-              placeholder="your nickname"
-              spellCheck={false}
-              onKeyDown={(e) => { if (e.key === "Enter") publish(); }}
-              style={{ fontFamily: mono, fontSize: 12.5, color: "var(--green-d)", background: "#f7faf8", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", width: 150 }}
-            />
-            <button
-              onClick={publish}
-              disabled={!nick.trim()}
-              style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--indigo)", border: "none", padding: "9px 16px", borderRadius: 9, cursor: nick.trim() ? "pointer" : "not-allowed", opacity: nick.trim() ? 1 : 0.5 }}
-            >
-              Publish
-            </button>
-            {pub && <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: mono }}>{pub}</span>}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderTop: "1px solid var(--border)" }}>
+          <button
+            style={btn(true)}
+            onClick={async () => { setStatus("saving…"); const id = await saveCurrentConfig(); setStatus(id ? `saved → configs/${id}.yaml` : "save failed"); }}
+          >
+            Save to library
+          </button>
+          <button style={btn(false)} onClick={() => navigator.clipboard?.writeText(json)}>Copy JSON</button>
+          {status && <span style={{ fontSize: 12.5, color: "var(--muted)", fontFamily: mono }}>{status}</span>}
+          <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--muted)" }}>Publish via the <b style={{ color: "var(--ink)" }}>Save&nbsp;▾</b> button</span>
         </div>
       </div>
     </div>
