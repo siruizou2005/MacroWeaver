@@ -117,7 +117,7 @@ export function PresetPicker() {
           >
             <span style={{ fontSize: 34, fontWeight: 300, lineHeight: 1 }}>+</span>
             <span style={{ fontSize: 14.5, fontWeight: 600 }}>Start from scratch</span>
-            <span style={{ fontSize: 12.5, maxWidth: 160, textAlign: "center" }}>Two cohorts, an empty market</span>
+            <span style={{ fontSize: 12.5, maxWidth: 170, textAlign: "center" }}>Empty world — pick a market, then add cohorts</span>
           </div>
         </div>
 

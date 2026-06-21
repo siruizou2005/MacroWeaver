@@ -21,6 +21,7 @@ function Toolbar() {
   const cancelRun = useStore((s) => s.cancelRun);
   const preset = useStore((s) => s.preset) || "blank";
   const runName = useStore((s) => s.runName);
+  const noCohorts = useStore((s) => s.cohorts.length === 0);
   const backToPicker = useStore((s) => s.backToPicker);
   const toggleConfigView = useStore((s) => s.toggleConfigView);
   const showConfig = useStore((s) => s.showConfig);
@@ -60,7 +61,9 @@ function Toolbar() {
         </button>
         <button
           onClick={running ? cancelRun : startRun}
-          style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "10px 20px", borderRadius: 9, cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+          disabled={!running && noCohorts}
+          title={!running && noCohorts ? "Add at least one cohort to run" : undefined}
+          style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "10px 20px", borderRadius: 9, cursor: !running && noCohorts ? "not-allowed" : "pointer", opacity: !running && noCohorts ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8 }}
         >
           {running ? "■ Stop" : "▶ Run"}
         </button>

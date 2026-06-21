@@ -263,7 +263,8 @@ export const useStore = create<MWState>((set, get) => ({
       showConfig: false,
       rounds: spec.defaultRounds,
       marketParams: defaultParams(mech),
-      cohorts: spec.starterCohorts(),
+      // blank = a true from-0 start: no cohorts, the user picks a market and adds them
+      cohorts: blank ? [] : spec.starterCohorts(),
       seed: blank ? 0 : 7,
       runName: blank ? "untitled" : spec.type,
       granularity: spec.granularity,
@@ -291,13 +292,16 @@ export const useStore = create<MWState>((set, get) => ({
 
   setMech: (m) => {
     const spec = getMarket(m);
+    // in a from-0 (blank) session, switching the market keeps the roster empty so
+    // the user builds it for the new market; presets/saved configs reset to starters.
+    const blank = get().preset === "blank";
     set({
       mech: m,
       marketParams: defaultParams(m),
       rounds: spec.defaultRounds,
       granularity: spec.granularity,
       reflectEvery: spec.reflectEvery,
-      cohorts: spec.starterCohorts(),
+      cohorts: blank ? [] : spec.starterCohorts(),
       shock: null,
       node: "market",
       expanded: null,
@@ -315,15 +319,11 @@ export const useStore = create<MWState>((set, get) => ({
     }),
 
   removeCohort: (id) =>
-    set((s) =>
-      s.cohorts.length <= 2
-        ? {}
-        : {
-            cohorts: s.cohorts.filter((c) => c.id !== id),
-            node: "market",
-            expanded: null,
-          },
-    ),
+    set((s) => ({
+      cohorts: s.cohorts.filter((c) => c.id !== id),
+      node: s.node === `cohort:${id}` ? "market" : s.node,
+      expanded: s.expanded === id ? null : s.expanded,
+    })),
 
   updateCohort: (id, patch) =>
     set((s) => ({ cohorts: s.cohorts.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
@@ -440,6 +440,7 @@ export const useStore = create<MWState>((set, get) => ({
 
   startRun: () => {
     const s = get();
+    if (s.cohorts.length === 0) return; // nothing to settle yet — add a cohort first
     set({
       running: true,
       liveSeries: emptySeries(),
