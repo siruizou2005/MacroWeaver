@@ -105,7 +105,7 @@ interface MWState {
   shock: ShockConfig | null;
   policyCfg: PolicyCfg;
   expanded: string | null; // cohort id whose pipeline drawer is open
-  layers: { info: boolean; institution: boolean; social: boolean; news: boolean };
+  layers: { info: boolean; news: boolean };
 
   // connection + library
   connected: boolean;
@@ -150,7 +150,7 @@ interface MWState {
   addCohort: () => void;
   removeCohort: (id: string) => void;
   updateCohort: (id: string, patch: Partial<Cohort>) => void;
-  toggleLayer: (k: "info" | "institution" | "social" | "news") => void;
+  toggleLayer: (k: "info" | "news") => void;
   setMarketParam: (key: string, value: any) => void;
   setRounds: (n: number) => void;
   setSeed: (n: number) => void;
@@ -207,7 +207,7 @@ export function buildConfig(s: MWState) {
       institution_fiscal: false,
       institution_monetary: false,
       production: false,
-      social: s.layers.social,
+      social: false,
       news: s.layers.news,
       shock: s.shock,
     },
@@ -234,7 +234,7 @@ export const useStore = create<MWState>((set, get) => ({
   shock: null,
   policyCfg: { ...DEFAULT_POLICY },
   expanded: null,
-  layers: { info: true, institution: false, social: false, news: false },
+  layers: { info: true, news: false },
 
   connected: false,
   presets: [],
@@ -362,7 +362,7 @@ export const useStore = create<MWState>((set, get) => ({
       reflectEvery: spec.reflectEvery,
       shock: null,
       policyCfg: { model: d.model, use_cache: d.useCache, max_concurrency: d.maxConcurrency },
-      layers: { info: true, institution: mech === "econ", social: mech === "clob", news: true },
+      layers: { info: true, news: true },
       liveSeries: emptySeries(),
       liveRound: 0,
       metrics: {},
@@ -469,8 +469,6 @@ export const useStore = create<MWState>((set, get) => ({
       },
       layers: {
         info: lay.observation !== false,
-        institution: mech === "econ",
-        social: !!lay.social || mech === "clob",
         news: lay.news !== false,
       },
       node: "market",

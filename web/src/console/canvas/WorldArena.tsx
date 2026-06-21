@@ -42,8 +42,6 @@ export function WorldArena() {
   const mkt = marketMeta(mech, marketParams);
 
   const infoOp = layers.info ? 0.95 : 0.22;
-  const instOp = layers.institution ? 0.95 : 0.16;
-  const socialOp = layers.social ? 0.9 : 0.0;
   const newsOp = layers.news ? 0.95 : 0.16;
 
   const placed = cohorts.map((co, i) => {
@@ -60,8 +58,6 @@ export function WorldArena() {
       <div style={{ position: "absolute", top: 60, left: 16, zIndex: 9, display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--muted)", margin: "0 0 1px 3px" }}>Layers</span>
         <LayerChip k="info" label="Observation" fg="#2f6f8f" bd="#9cc0d6" />
-        <LayerChip k="institution" label="Institution" fg="#6f5ea6" bd="#c2b6df" />
-        <LayerChip k="social" label="Social network" fg="#2f7d6a" bd="#a3d0c0" />
         <LayerChip k="news" label="News / shock" fg="#bd7a2a" bd="#e0c79a" />
       </div>
 
@@ -75,12 +71,6 @@ export function WorldArena() {
               </defs>
               <circle cx="318" cy="262" r="150" fill="none" stroke="#8aa6c4" strokeWidth="1.2" strokeDasharray="3 6" opacity={infoOp} />
               <text x="318" y="430" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5f7794" opacity={infoOp}>Observation layer · price · macro · news</text>
-              <rect x="198" y="200" width="240" height="124" rx="16" fill="none" stroke="#9a86c4" strokeWidth="1.2" strokeDasharray="4 5" opacity={instOp} />
-              <text x="318" y="194" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11" fill="#6f5ea6" opacity={instOp}>Institution (optional) · tax / rate</text>
-              {placed.map((p, i) => {
-                const nx = placed[(i + 1) % k];
-                return <line key={i} x1={p.x} y1={p.y} x2={nx.x} y2={nx.y} stroke="#7fb59c" strokeWidth="1.2" strokeDasharray="2 6" opacity={socialOp} />;
-              })}
               {placed.map((p, i) => (
                 <line key={"c" + i} x1="318" y1="262" x2={p.x} y2={p.y} stroke="#9aa79e" strokeWidth="1.6" />
               ))}
@@ -178,7 +168,7 @@ export function WorldArena() {
   );
 }
 
-function LayerChip({ k, label, fg, bd }: { k: "info" | "institution" | "social" | "news"; label: string; fg: string; bd: string }) {
+function LayerChip({ k, label, fg, bd }: { k: "info" | "news"; label: string; fg: string; bd: string }) {
   const on = useStore((s) => s.layers[k]);
   const toggle = useStore((s) => s.toggleLayer);
   return (

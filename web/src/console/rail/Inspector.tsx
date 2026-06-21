@@ -191,9 +191,8 @@ function MarketPanel() {
 function ObservationPanel() {
   const layers = useStore((s) => s.layers);
   const toggleLayer = useStore((s) => s.toggleLayer);
-  const items: { k: "info" | "social" | "news"; label: string; note: string }[] = [
+  const items: { k: "info" | "news"; label: string; note: string }[] = [
     { k: "info", label: "Observation", note: "agents see price · macro · news" },
-    { k: "social", label: "Social network", note: "peer ties (world view)" },
     { k: "news", label: "News / shock feed", note: "emits a news string each round" },
   ];
   return (
