@@ -32,10 +32,20 @@ function NavLink({ label, target }: { label: string; target: Screen }) {
 function Header() {
   const nav = useStore((s) => s.nav);
   const screen = useStore((s) => s.screen);
+  const preset = useStore((s) => s.preset);
   const connected = useStore((s) => s.connected);
   const backToPicker = useStore((s) => s.backToPicker);
   const inApp = screen === "console" || screen === "replay";
   const enterConsole = () => { backToPicker(); nav("console"); };
+
+  // one contextual step back: replay → console; editor → library; library → home
+  const inEditor = screen === "console" && !!preset;
+  const backLabel = screen === "replay" ? "Console" : inEditor ? "Library" : "Home";
+  const goBack = () => {
+    if (screen === "replay") nav("console");
+    else if (inEditor) backToPicker();
+    else nav("landing");
+  };
   return (
     <header
       style={{
@@ -93,11 +103,13 @@ function Header() {
         </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {inApp ? (
-            // Replay is entered by opening a specific trace (Library → Traces),
-            // so there is no ambiguous top-level "Replay" jump here.
-            <>
-              <NavLink label="Console" target="console" />
-            </>
+            // one contextual step back (replay → console, editor → library, …)
+            <a
+              onClick={goBack}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14.5, fontWeight: 500, padding: "7px 13px 7px 10px", borderRadius: 8, cursor: "pointer", color: "var(--green-d)", background: "var(--green-l)" }}
+            >
+              <span style={{ fontSize: 15, lineHeight: 1 }}>←</span> Back to {backLabel}
+            </a>
           ) : (
             <>
               <NavLink label="Overview" target="landing" />
