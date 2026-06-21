@@ -126,7 +126,7 @@ export function Landing() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
           <PresetCard
             badge="Primary · quantitative" badgeColor="var(--green-d)" badgeBg="var(--green-l)"
-            title="Fish · Algorithmic Collusion"
+            title="Oligopoly Pricing"
             body="Pricing LLMs on a Calvano logit market. Watch price drift above the competitive Bertrand level toward the monopoly price — collusion with no communication."
             onClick={() => openPreset("fish")}
           />

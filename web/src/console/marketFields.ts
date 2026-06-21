@@ -63,7 +63,7 @@ const num = (v: any, d = 0) => {
 const FISH: MarketSpec = {
   mech: "fish",
   type: "fish_calvano",
-  name: "Fish · Calvano",
+  name: "Oligopoly Pricing",
   blurb:
     "Calvano logit demand turns the posted-price vector into sales, profit and the next state. With no communication, price drifts from Bertrand toward monopoly.",
   action: "set price",

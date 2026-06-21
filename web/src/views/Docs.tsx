@@ -18,7 +18,7 @@ function Section({ kicker, title, children }: { kicker: string; title: string; c
 }
 
 const markets = [
-  { name: "Fish · Calvano", type: "fish_calvano", body: "Pricing LLMs on a logit-demand market. Watch price drift from the competitive Bertrand level toward the monopoly price — algorithmic collusion with no communication." },
+  { name: "Oligopoly Pricing", type: "fish_calvano", body: "Pricing LLMs on a logit-demand market. Watch price drift from the competitive Bertrand level toward the monopoly price — algorithmic collusion with no communication." },
   { name: "EconAgent · Macro", type: "econagent", body: "Household agents make work/consume decisions that aggregate into wages, prices, employment and inflation (CPI)." },
   { name: "TwinMarket · CLOB", type: "clob", body: "A central limit order book where fundamentalist, momentum and noise traders post orders; traded price tracks fair value." },
 ];

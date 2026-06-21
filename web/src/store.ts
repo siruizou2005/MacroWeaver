@@ -52,8 +52,36 @@ function pathToScreen(path: string): Screen {
   if (path.startsWith("/blog")) return "blog";
   return "landing";
 }
-function pushPath(s: Screen) {
-  const p = SCREEN_PATH[s];
+const MECH_TO_SLUG: Record<string, string> = { fish: "oligopoly-pricing", econ: "econagent-macro", clob: "twinmarket-clob", blank: "new" };
+const SLUG_TO_MECH: Record<string, Mech | "blank"> = { "oligopoly-pricing": "fish", "econagent-macro": "econ", "twinmarket-clob": "clob", "new": "blank" };
+const LIB_TABS = new Set<string>(["traces", "markets", "schema", "settings"]);
+type ConsoleSub =
+  | { kind: "builtin"; id: Mech | "blank" }
+  | { kind: "config" | "template"; id: string }
+  | { kind: "tab"; tab: LibTab }
+  | null;
+function consoleSubFromPath(path: string): ConsoleSub {
+  const cfgMatch = path.match(/^\/console\/config\/(.+)/);
+  if (cfgMatch) return { kind: "config", id: decodeURIComponent(cfgMatch[1]) };
+  const tplMatch = path.match(/^\/console\/template\/(.+)/);
+  if (tplMatch) return { kind: "template", id: decodeURIComponent(tplMatch[1]) };
+  const m = path.match(/^\/console\/([\w-]+)/);
+  if (!m) return null;
+  const seg = m[1];
+  if (seg in SLUG_TO_MECH) return { kind: "builtin", id: SLUG_TO_MECH[seg] };
+  if (LIB_TABS.has(seg)) return { kind: "tab", tab: seg as LibTab };
+  return null;
+}
+function presetSlug(kind: "builtin" | "config" | "template" | null, id: string | null): string | null {
+  if (!id || !kind) return null;
+  if (kind === "builtin") return MECH_TO_SLUG[id] || id;
+  if (kind === "config") return `config/${encodeURIComponent(id)}`;
+  if (kind === "template") return `template/${encodeURIComponent(id)}`;
+  return null;
+}
+function pushPath(s: Screen, sub?: string | null) {
+  const base = SCREEN_PATH[s];
+  const p = sub ? `${base}/${sub}` : base;
   if (location.pathname !== p) history.pushState({}, "", p);
 }
 
@@ -64,6 +92,7 @@ interface MWState {
   view: CanvasView;
   mech: Mech;
   preset: string | null;
+  presetKind: "builtin" | "config" | "template" | null;
 
   // world config — every field maps 1:1 onto the engine Config
   cohorts: Cohort[];
@@ -98,6 +127,7 @@ interface MWState {
   metrics: Record<string, any>;
 
   // replay
+  traceId: string | null;
   trace: Trace | null;
   round: number;
   playing: boolean;
@@ -192,6 +222,7 @@ export const useStore = create<MWState>((set, get) => ({
   view: "arena",
   mech: "fish",
   preset: null,
+  presetKind: null,
 
   cohorts: getMarket("fish").starterCohorts(),
   marketParams: defaultParams("fish"),
@@ -222,6 +253,7 @@ export const useStore = create<MWState>((set, get) => ({
   liveNews: "",
   metrics: {},
 
+  traceId: null,
   trace: null,
   round: 0,
   playing: false,
@@ -257,12 +289,50 @@ export const useStore = create<MWState>((set, get) => ({
   },
 
   // browser back/forward → reflect the URL into the screen state
-  syncFromPath: () => set({ screen: pathToScreen(location.pathname) }),
+  syncFromPath: () => {
+    const screen = pathToScreen(location.pathname);
+    if (screen === "console") {
+      const sub = consoleSubFromPath(location.pathname);
+      if (sub?.kind === "builtin" && sub.id !== get().preset) {
+        get().openPreset(sub.id);
+        return;
+      }
+      if (sub?.kind === "config" && sub.id !== get().preset) {
+        get().loadSavedConfig(sub.id);
+        return;
+      }
+      if (sub?.kind === "template" && sub.id !== get().preset) {
+        get().loadTemplate(sub.id);
+        return;
+      }
+      if (sub?.kind === "tab") {
+        set({ screen, preset: null, presetKind: null, libTab: sub.tab });
+        return;
+      }
+      if (!sub && get().preset) {
+        set({ screen, preset: null, presetKind: null });
+        return;
+      }
+    }
+    if (screen === "replay") {
+      const m = location.pathname.match(/^\/replay\/(.+)/);
+      if (m) {
+        const id = decodeURIComponent(m[1]);
+        if (id !== get().traceId) {
+          get().loadTrace(id);
+          return;
+        }
+      }
+    }
+    set({ screen });
+  },
 
   // return the console to its preset-picker start state
   backToPicker: () => {
     get().pause();
-    set({ preset: null, running: false });
+    const tab = get().libTab;
+    pushPath("console", tab === "presets" ? null : tab);
+    set({ preset: null, presetKind: null, running: false });
   },
 
   openPreset: (id) => {
@@ -270,12 +340,13 @@ export const useStore = create<MWState>((set, get) => ({
     const mech: Mech = blank ? "fish" : (id as Mech);
     const spec = getMarket(mech);
     const d = loadDefaults(); // Settings-page defaults for new from-scratch worlds
-    pushPath("console");
+    pushPath("console", MECH_TO_SLUG[id] || id);
     // scaffold a complete, engine-valid config from the registry; for a shipped
     // preset, the fetch below overrides it with the exact golden config.
     set({
       screen: "console",
       preset: id,
+      presetKind: "builtin",
       mech,
       node: "market",
       view: "arena",
@@ -310,7 +381,10 @@ export const useStore = create<MWState>((set, get) => ({
 
   selectNode: (n) => set({ node: n }),
   setView: (v) => set({ view: v }),
-  setLibTab: (t) => set({ libTab: t }),
+  setLibTab: (t) => {
+    pushPath("console", t === "presets" ? null : t);
+    set({ libTab: t });
+  },
 
   setMech: (m) => {
     const spec = getMarket(m);
@@ -428,6 +502,8 @@ export const useStore = create<MWState>((set, get) => ({
       });
       if (!r.ok) return null;
       const { id } = await r.json();
+      pushPath("console", `config/${encodeURIComponent(id)}`);
+      set({ preset: id, presetKind: "config" });
       get().refreshConfigs();
       return id as string;
     } catch {
@@ -440,9 +516,10 @@ export const useStore = create<MWState>((set, get) => ({
       const r = await fetch(`/api/configs/${id}`);
       if (!r.ok) return;
       const cfg = await r.json();
-      pushPath("console");
+      pushPath("console", `config/${encodeURIComponent(id)}`);
       set({
         screen: "console",
+        presetKind: "config",
         view: "arena",
         node: "market",
         expanded: null,
@@ -498,9 +575,10 @@ export const useStore = create<MWState>((set, get) => ({
       const r = await fetch(`/api/templates/${id}`);
       if (!r.ok) return;
       const cfg = await r.json();
-      pushPath("console");
+      pushPath("console", `template/${encodeURIComponent(id)}`);
       set({
         screen: "console",
+        presetKind: "template",
         view: "arena",
         node: "market",
         expanded: null,
@@ -551,8 +629,8 @@ export const useStore = create<MWState>((set, get) => ({
     const r = await fetch(`/api/traces/${id}`);
     if (!r.ok) return;
     const trace = (await r.json()) as Trace;
-    pushPath("replay");
-    set({ trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
+    pushPath("replay", encodeURIComponent(id));
+    set({ traceId: id, trace, round: 0, screen: "replay", mech: TYPE_TO_MECH[trace.market] || "fish" });
   },
 
   play: () => {

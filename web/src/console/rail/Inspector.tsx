@@ -283,7 +283,7 @@ function ShockPanel() {
           <Row label="kind" hint="market-defined"><Enum value={shock.kind} options={Array.from(new Set([...SHOCK_KINDS, shock.kind]))} onChange={(v) => setShock({ kind: v })} /></Row>
           <Row label="magnitude" hint="fraction"><Num value={shock.magnitude} step={0.05} onChange={(n) => setShock({ magnitude: n })} /></Row>
           <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-            Only the Fish market reacts to <span style={{ fontFamily: mono }}>cost_jump</span> (cost ×(1+magnitude)). Other markets ignore the shock.
+            Only the Oligopoly Pricing market reacts to <span style={{ fontFamily: mono }}>cost_jump</span> (cost ×(1+magnitude)). Other markets ignore the shock.
           </div>
         </>
       )}

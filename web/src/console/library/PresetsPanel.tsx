@@ -119,7 +119,7 @@ export function PresetsPanel() {
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 18, marginTop: 30 }}>
-        <PresetCard chips={["μ=0.25", "T=48", "2 firms"]} badge="Quantitative" badgeColor="var(--green-d)" badgeBg="var(--green-l)" title="Fish · Calvano" body="Pricing firms collude on logit demand." svg={fishSvg} onClick={() => openPreset("fish")} />
+        <PresetCard chips={["μ=0.25", "T=48", "2 firms"]} badge="Quantitative" badgeColor="var(--green-d)" badgeBg="var(--green-l)" title="Oligopoly Pricing" body="Pricing firms collude on logit demand." svg={fishSvg} onClick={() => openPreset("fish")} />
         <PresetCard chips={["245 agents", "T=40"]} badge="Demo" badgeColor="var(--amber)" badgeBg="#f7efe2" title="EconAgent · Macro" body="Household cohorts drive wages, prices, jobs." svg={econSvg} onClick={() => openPreset("econ")} />
         <PresetCard chips={["28 traders", "T=80"]} badge="Financial" badgeColor="var(--teal)" badgeBg="#e6eef4" title="TwinMarket · CLOB" body="Limit-order book with stylized facts." svg={clobSvg} onClick={() => openPreset("clob")} />
         <div

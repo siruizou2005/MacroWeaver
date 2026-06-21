@@ -28,7 +28,7 @@ const POSTS: Post[] = [
     date: "Jun 2026",
     author: "MacroWeaver team",
     excerpt:
-      "Running the Fish · Calvano preset, pricing agents drift from the competitive Bertrand level toward the monopoly price — supra-competitive prices with no explicit agreement.",
+      "Running the Oligopoly Pricing preset, pricing agents drift from the competitive Bertrand level toward the monopoly price — supra-competitive prices with no explicit agreement.",
     body: [
       { p: "We reproduced the headline result of Fish et al. (2024): LLM pricing agents on a logit-demand market converge to supra-competitive prices without ever communicating. Each firm only sees rivals' recent prices and its own profit history, yet prices settle well above the Bertrand–Nash equilibrium." },
       { h: "Setup" },
@@ -52,7 +52,7 @@ const POSTS: Post[] = [
     body: [
       { p: "MacroWeaver is built on one fixed loop — Population·Agents → Market → Observation → Scheduler → Recorder → write-back — where the Market is the only block you swap. The agent pipeline (profile, perception, memory, decision, reflection) is identical across markets; heterogeneity lives entirely in the cohort config." },
       { h: "Three markets ship today" },
-      { p: "Fish · Calvano reproduces algorithmic collusion on logit demand. EconAgent · Macro drives wages, prices and inflation from household work/consume decisions. TwinMarket · CLOB runs a continuous limit-order book with fundamentalist, momentum and noise traders." },
+      { p: "Oligopoly Pricing reproduces algorithmic collusion on logit demand. EconAgent · Macro drives wages, prices and inflation from household work/consume decisions. TwinMarket · CLOB runs a continuous limit-order book with fundamentalist, momentum and noise traders." },
       { h: "Why a single kernel" },
       { p: "Swapping only the market isolates the variable under study. If the same agents produce collusion in one market and realistic inflation dynamics in another, the result is a property of the agent behavior, not of bespoke per-paper scaffolding." },
     ],

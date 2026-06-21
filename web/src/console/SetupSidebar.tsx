@@ -8,7 +8,7 @@ const ACOLORS = [
   { bg: "#e6f1ee", fg: "#2f7d6a" }, { bg: "#f1eae9", fg: "#9a5a52" },
 ];
 
-const PRESET_NAMES: Record<string, string> = { fish: "Fish · Calvano", econ: "EconAgent · Macro", clob: "TwinMarket · CLOB", blank: "Untitled simulation" };
+const PRESET_NAMES: Record<string, string> = { fish: "Oligopoly Pricing", econ: "EconAgent · Macro", clob: "TwinMarket · CLOB", blank: "Untitled simulation" };
 const PRESET_IDS: Record<string, string> = { fish: "fish_calvano", econ: "econagent_macro", clob: "clob_twinmarket", blank: "new_config" };
 
 function Block({ id, glyph, glyphColor, label, optional }: any) {

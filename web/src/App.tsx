@@ -173,6 +173,7 @@ export function App() {
   const syncFromPath = useStore((s) => s.syncFromPath);
   useEffect(() => {
     connect();
+    syncFromPath();
     window.addEventListener("popstate", syncFromPath);
     return () => window.removeEventListener("popstate", syncFromPath);
   }, [connect, syncFromPath]);

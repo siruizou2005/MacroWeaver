@@ -51,7 +51,7 @@ export function Replay() {
     ];
   }
   const title =
-    trace.market === "fish_calvano" ? "Fish · Calvano — price vs. benchmarks" :
+    trace.market === "fish_calvano" ? "Oligopoly Pricing — price vs. benchmarks" :
     trace.market === "econagent" ? "EconAgent · Macro — CPI & inflation" :
     "CLOB — traded price vs. fair value";
 
