@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import { MARKETS } from "../marketFields";
 import type { Mech } from "../../types";
@@ -19,6 +19,7 @@ export function MarketsPanel() {
   const refreshTemplates = useStore((s) => s.refreshTemplates);
   const loadTemplate = useStore((s) => s.loadTemplate);
   const deleteTemplate = useStore((s) => s.deleteTemplate);
+  const [confirmId, setConfirmId] = useState<string | null>(null); // un-publish armed?
 
   useEffect(() => { refreshTemplates(); }, [refreshTemplates]);
 
@@ -70,23 +71,26 @@ export function MarketsPanel() {
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-            {templates.map((c) => (
-              <div key={c.id} onClick={() => loadTemplate(c.id)} className="mw-card-hover" style={{ position: "relative", border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
-                <span
-                  onClick={(e) => { e.stopPropagation(); deleteTemplate(c.id); }}
-                  title="Un-publish (remove from Markets)"
-                  style={{ position: "absolute", top: 8, right: 10, fontSize: 15, color: "#c2ccc4", cursor: "pointer", lineHeight: 1 }}
+            {templates.map((c) => {
+              const armed = confirmId === c.id;
+              return (
+              <div key={c.id} onClick={() => loadTemplate(c.id)} onMouseLeave={() => setConfirmId((p) => (p === c.id ? null : p))} className="mw-card-hover" style={{ position: "relative", border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (armed) { deleteTemplate(c.id); setConfirmId(null); } else setConfirmId(c.id); }}
+                  title={armed ? "Click again to confirm un-publish" : "Remove this world from Markets"}
+                  style={armed ? delBtnArmed : delBtn}
                 >
-                  ×
-                </span>
+                  {armed ? "Confirm?" : "✕ Unpublish"}
+                </button>
                 <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.market || "config"}</div>
-                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0", paddingRight: 14 }}>{c.name || c.id}</div>
+                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0", paddingRight: 78 }}>{c.name || c.id}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontSize: 11.5, color: "var(--green-d)", fontWeight: 600 }}>by {c.author || "anonymous"}</span>
                   <span style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}open ▸</span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -94,5 +98,11 @@ export function MarketsPanel() {
   );
 }
 
+const delBtn: CSSProperties = {
+  position: "absolute", top: 8, right: 8, fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+  color: "#a8443c", background: "#fbf1f0", border: "1px solid #ecd5d2", borderRadius: 7,
+  padding: "4px 9px", cursor: "pointer", lineHeight: 1,
+};
+const delBtnArmed: CSSProperties = { ...delBtn, color: "#fff", background: "#a8443c", border: "1px solid #a8443c", fontWeight: 700 };
 const chip: CSSProperties = { border: "1px solid var(--border)", borderRadius: 5, padding: "3px 7px" };
 const btn: CSSProperties = { flex: 1, fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "8px 10px", borderRadius: 8, cursor: "pointer" };

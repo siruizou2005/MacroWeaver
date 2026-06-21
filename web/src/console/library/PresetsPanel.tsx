@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useStore } from "../../store";
 import { MARKETS } from "../marketFields";
 import type { Mech } from "../../types";
 
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
+
+// shared red "destructive" pill for the card delete / un-publish buttons
+const delBtn: CSSProperties = {
+  position: "absolute", top: 8, right: 8, fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+  color: "#a8443c", background: "#fbf1f0", border: "1px solid #ecd5d2", borderRadius: 7,
+  padding: "4px 9px", cursor: "pointer", lineHeight: 1,
+};
+// armed (second-click-to-confirm) state — solid red
+const delBtnArmed: CSSProperties = { ...delBtn, color: "#fff", background: "#a8443c", border: "1px solid #a8443c", fontWeight: 700 };
 
 const ACCENT: Record<Mech, { fg: string; bg: string }> = {
   fish: { fg: "var(--green-d)", bg: "var(--green-l)" },
@@ -99,6 +108,7 @@ export function PresetsPanel() {
   const loadSavedConfig = useStore((s) => s.loadSavedConfig);
   const deleteSavedConfig = useStore((s) => s.deleteSavedConfig);
   const [choosing, setChoosing] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null); // saved-config delete armed?
 
   return (
     <div>
@@ -128,20 +138,23 @@ export function PresetsPanel() {
         <div style={{ marginTop: 40 }}>
           <h2 style={{ fontFamily: serif, fontWeight: 600, fontSize: 20, margin: "0 0 14px" }}>Saved configs</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-            {savedConfigs.map((c) => (
-              <div key={c.id} onClick={() => loadSavedConfig(c.id)} className="mw-card-hover" style={{ position: "relative", border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
-                <span
-                  onClick={(e) => { e.stopPropagation(); deleteSavedConfig(c.id); }}
-                  title="Delete this saved config"
-                  style={{ position: "absolute", top: 8, right: 10, fontSize: 15, color: "#c2ccc4", cursor: "pointer", lineHeight: 1 }}
+            {savedConfigs.map((c) => {
+              const armed = confirmId === c.id;
+              return (
+              <div key={c.id} onClick={() => loadSavedConfig(c.id)} onMouseLeave={() => setConfirmId((p) => (p === c.id ? null : p))} className="mw-card-hover" style={{ position: "relative", border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "#fff", cursor: "pointer" }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (armed) { deleteSavedConfig(c.id); setConfirmId(null); } else setConfirmId(c.id); }}
+                  title={armed ? "Click again to confirm" : "Delete this saved config"}
+                  style={armed ? delBtnArmed : delBtn}
                 >
-                  ×
-                </span>
+                  {armed ? "Confirm?" : "✕ Delete"}
+                </button>
                 <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.market || "config"}</div>
-                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0", paddingRight: 14 }}>{c.run_name || c.id}</div>
+                <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 16, margin: "4px 0", paddingRight: 58 }}>{c.run_name || c.id}</div>
                 <div style={{ fontFamily: mono, fontSize: 11, color: "var(--muted)" }}>{c.rounds ? `T=${c.rounds} · ` : ""}edit ▸</div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
