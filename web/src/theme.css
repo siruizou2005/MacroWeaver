@@ -87,6 +87,20 @@ input[type="range"]::-webkit-slider-thumb {
     transform: none;
   }
 }
+/* travelling highlight for the kernel-pipeline flow strip (per-chip animation-delay
+   makes the green sweep Agents → … → Rec, representing one round of the cycle) */
+@keyframes mw-flow-chip {
+  0%,
+  100% {
+    background: #f1f4f1;
+    color: var(--muted);
+  }
+  45%,
+  55% {
+    background: var(--green);
+    color: #fff;
+  }
+}
 
 .mw-serif {
   font-family: "Spectral", serif;

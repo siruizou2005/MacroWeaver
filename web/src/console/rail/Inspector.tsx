@@ -327,6 +327,17 @@ function CohortPanel({ id }: { id: string }) {
         onChange={(p) => updateCohort(co.id, { policy: p })}
       />
 
+      <div
+        onClick={() => openExpanded(co.id)}
+        style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--muted)", cursor: "pointer", lineHeight: 1.4 }}
+      >
+        <span style={{ flex: "none", color: "var(--indigo)" }}>⌘</span>
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          System prompt: <span style={{ color: "var(--ink)" }}>{spec.systemPrompt(co)}</span>
+        </span>
+        <span style={{ flex: "none", color: "var(--indigo)", fontWeight: 600 }}>view ▸</span>
+      </div>
+
       <Row label="memory" hint="kind"><Enum value={co.memory || spec.defaultMemory} options={MEMORY_KINDS} onChange={(v) => updateCohort(co.id, { memory: v })} /></Row>
       <Row label="reflection" hint="kind"><Enum value={co.reflection || spec.defaultReflection} options={REFLECTION_KINDS} onChange={(v) => updateCohort(co.id, { reflection: v })} /></Row>
 

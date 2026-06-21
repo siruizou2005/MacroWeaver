@@ -86,6 +86,19 @@ export function getTrace(id) {
   return JSON.parse(fs.readFileSync(p, "utf-8"));
 }
 
+// Persist a kept, named copy of an existing trace under traces/saved/<slug>.trace.json
+// so it survives the next same-run_name run (which would otherwise overwrite it).
+export function saveTraceAs(srcId, name) {
+  const src = getTrace(srcId); // handles nested ids + sandboxing
+  if (!src) throw new Error("source trace not found");
+  const id = `saved/${slug(name || src.run_name || srcId)}`;
+  const p = path.resolve(TRACES_DIR, `${id}.trace.json`);
+  if (!p.startsWith(path.resolve(TRACES_DIR) + path.sep)) throw new Error("bad name");
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(src), "utf-8");
+  return id;
+}
+
 export function traceIdForRun(runName) {
   return slug(runName);
 }

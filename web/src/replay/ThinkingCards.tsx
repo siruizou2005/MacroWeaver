@@ -1,13 +1,13 @@
-import { useStore } from "../store";
+import { useStore, viewTrace, viewRound } from "../store";
 import { agentColor } from "../lib/chart";
 
 const serif = "'Spectral',serif";
 const mono = "'Spline Sans Mono',monospace";
 
 export function ThinkingCards() {
-  const trace = useStore((s) => s.trace);
-  const round = useStore((s) => s.round);
-  if (!trace) return null;
+  const trace = useStore(viewTrace);
+  const round = useStore(viewRound);
+  if (!trace || !trace.rounds.length) return null;
   const frame = trace.rounds[Math.min(round, trace.rounds.length - 1)];
   const agents = frame?.agents || [];
 

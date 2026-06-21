@@ -26,15 +26,63 @@ const PRESET_FILE: Record<Mech, string> = {
 
 const DEFAULT_POLICY: PolicyCfg = { model: "claude-opus-4-8", use_cache: true, max_concurrency: 5 };
 
+// Live run accumulator. `cols` holds every numeric headline series the market emits
+// (mean_price, collusion_index, inflation, return_pct, …) so any market streams faithfully
+// into the replay view; `by_agent_price` is the per-agent line bundle.
 interface LiveSeries {
   round: number[];
-  mean_price: number[];
-  collusion_index: number[];
   by_agent_price: Record<string, number[]>;
-  total_profit: number[];
+  cols: Record<string, number[]>;
 }
 function emptySeries(): LiveSeries {
-  return { round: [], mean_price: [], collusion_index: [], by_agent_price: {}, total_profit: [] };
+  return { round: [], by_agent_price: {}, cols: {} };
+}
+
+// Build a trace-shaped object from the in-progress live run so the Replay view can render
+// a run AS IT STREAMS (chart + agent thinking), then settle into the real trace on done.
+function buildLiveTrace(s: MWState): Trace {
+  const ls = s.liveSeries;
+  const T = ls.round.length;
+  const agents: any[] = Object.entries(s.liveAgents).map(([id, a]: [string, any]) => ({
+    id,
+    price: a?.action?.price ?? a?.realized?.price ?? a?.price,
+    profit: a?.realized?.profit ?? a?.profit,
+    reasoning: a?.reasoning,
+    beliefs: a?.beliefs,
+    realized: a?.realized,
+    action: a?.action,
+  }));
+  // only the latest frame carries agents (live thinking); earlier frames are placeholders
+  const rounds = ls.round.map((rn, i) =>
+    i === T - 1 ? { round: rn, news: s.liveNews, agents } : { round: rn, news: "", agents: [] },
+  );
+  return {
+    schema_version: 0,
+    run_name: s.runName,
+    config: null,
+    market: MECH_TO_TYPE[s.mech],
+    granularity: s.granularity,
+    T,
+    benchmarks: s.liveBenchmarks || {},
+    agents: agents.map((a) => ({ id: a.id, cohort: "", name: a.id, persona: "" })),
+    series: { round: ls.round, by_agent_price: ls.by_agent_price, ...ls.cols },
+    rounds: rounds as any,
+    metrics: {},
+  };
+}
+
+// the trace currently on screen: the live run while running, else the loaded/finished trace
+export function viewTrace(s: MWState): Trace | null {
+  return s.running && s.liveTrace ? s.liveTrace : s.trace;
+}
+// the round currently shown: pinned to the live edge while running, else the scrub position
+export function viewRound(s: MWState): number {
+  return s.running && s.liveTrace ? Math.max(0, s.liveTrace.T - 1) : s.round;
+}
+// the canonical "demo" trace for a market — the default the replay page shows when nothing
+// is explicitly opened (mirrors the reference auto-loading its demo at startup)
+export function goldenIdForMech(mech: Mech): string {
+  return `golden/${PRESET_FILE[mech]}`;
 }
 
 // ---- URL routing: one real path per screen (server has SPA fallback) ----
@@ -85,7 +133,7 @@ function pushPath(s: Screen, sub?: string | null) {
   if (location.pathname !== p) history.pushState({}, "", p);
 }
 
-interface MWState {
+export interface MWState {
   // navigation / selection
   screen: Screen;
   node: string | null; // "market" | "observation" | "scheduler" | "recorder" | "shock" | "cohort:<id>"
@@ -122,8 +170,9 @@ interface MWState {
   liveBenchmarks: Benchmarks;
   liveSeries: LiveSeries;
   liveRound: number;
-  liveAgents: Record<string, any>; // agent_id -> last {beliefs, reasoning, action}
+  liveAgents: Record<string, any>; // agent_id -> last {beliefs, reasoning, action, realized}
   liveNews: string;
+  liveTrace: Trace | null; // trace-shaped view of the in-progress run (drives Replay while running)
   metrics: Record<string, any>;
 
   // replay
@@ -171,8 +220,13 @@ interface MWState {
   deleteTemplate: (id: string) => Promise<void>;
   openExpanded: (id: string) => void;
   collapse: () => void;
+  armRun: () => void;
+  viewReplay: () => void;
   startRun: () => void;
+  rerun: () => void;
   cancelRun: () => void;
+  refreshTraces: () => void;
+  saveTrace: (name?: string) => Promise<string | null>;
   loadTrace: (id: string) => Promise<void>;
   play: () => void;
   pause: () => void;
@@ -251,6 +305,7 @@ export const useStore = create<MWState>((set, get) => ({
   liveRound: 0,
   liveAgents: {},
   liveNews: "",
+  liveTrace: null,
   metrics: {},
 
   traceId: null,
@@ -604,23 +659,83 @@ export const useStore = create<MWState>((set, get) => ({
   openExpanded: (id) => set({ expanded: id, node: `cohort:${id}` }),
   collapse: () => set({ expanded: null }),
 
+  // console "Run" → the replay page in NEW-RUN mode: an empty scaffold of the configured
+  // world (no values yet) that you launch with Run, or switch to Replay to watch a past
+  // run. Clears any loaded trace so nothing reads as already-computed.
+  armRun: () => {
+    get().pause();
+    pushPath("replay");
+    set({ screen: "replay", running: false, trace: null, traceId: null, liveTrace: null, round: 0 });
+  },
+
+  // top-bar "Replay" toggle: leave new-run mode by loading a real trace (the current
+  // market's golden as a default); a no-op when one is already open.
+  viewReplay: () => {
+    const s = get();
+    if (!s.trace) get().loadTrace(goldenIdForMech(s.mech));
+  },
+
   startRun: () => {
     const s = get();
     if (s.cohorts.length === 0) return; // nothing to settle yet — add a cohort first
+    get().pause(); // stop any replay playback before taking over the view
+    const fresh = { ...s, liveSeries: emptySeries(), liveAgents: {}, liveNews: "", liveBenchmarks: {} };
+    pushPath("replay");
     set({
+      screen: "replay",
       running: true,
       liveSeries: emptySeries(),
       liveRound: 0,
       liveAgents: {},
+      liveNews: "",
       liveBenchmarks: {},
+      liveTrace: buildLiveTrace(fresh as MWState), // empty (T=0) stub → Replay shows "starting…", not the golden
+      round: 0,
       metrics: {},
     });
     s.send({ type: "run.start", config: buildConfig(s) });
   },
 
+  // Replay-page Run: re-run the loaded trace's own config when one is open (faithful
+  // re-run of what you're watching), else just run the current editor config.
+  rerun: () => {
+    const s = get();
+    if (s.running) return;
+    const cfg = s.trace?.config;
+    if (cfg && cfg.market) get().applyConfig(cfg);
+    get().startRun();
+  },
+
   cancelRun: () => {
     get().send({ type: "run.cancel", runId: get().runId });
     set({ running: false });
+  },
+
+  refreshTraces: () => {
+    fetch("/api/traces")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((traces: TraceMeta[]) => set({ traces: traces || [] }))
+      .catch(() => {});
+  },
+
+  // persist a kept, named copy of the currently loaded trace (won't be clobbered by re-runs)
+  saveTrace: async (name) => {
+    const s = get();
+    const id = s.traceId;
+    if (!id) return null;
+    try {
+      const r = await fetch("/api/traces/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name: name || s.trace?.run_name || id }),
+      });
+      if (!r.ok) return null;
+      const { id: newId } = await r.json();
+      get().refreshTraces();
+      return newId as string;
+    } catch {
+      return null;
+    }
   },
 
   loadTrace: async (id) => {
@@ -676,9 +791,10 @@ function handleMessage(m: any, set: any, get: () => MWState) {
       break;
     case "round":
       applyEvent(m.event, set, get);
+      if (get().running) set({ liveTrace: buildLiveTrace(get()) });
       break;
     case "run.done":
-      set({ running: false, metrics: m.metrics || {} });
+      set({ running: false, liveTrace: null, metrics: m.metrics || {} });
       // refresh trace library then auto-open replay on the finished trace
       fetch("/api/traces")
         .then((r) => r.json())
@@ -704,22 +820,24 @@ function applyEvent(ev: any, set: any, get: () => MWState) {
   } else if (ev.type === "news") {
     set({ liveNews: ev.payload.text || "" });
   } else if (ev.type === "agent_decision" && ev.agent_id) {
-    set({ liveAgents: { ...s.liveAgents, [ev.agent_id]: ev.payload } });
+    set({ liveAgents: { ...s.liveAgents, [ev.agent_id]: { ...(s.liveAgents[ev.agent_id] || {}), ...ev.payload } } });
+  } else if (ev.type === "settle" && ev.agent_id) {
+    // fold the per-agent realized outcome (price/profit) onto its decision for the thinking cards
+    const prev = s.liveAgents[ev.agent_id] || {};
+    set({ liveAgents: { ...s.liveAgents, [ev.agent_id]: { ...prev, realized: ev.payload } } });
   } else if (ev.type === "series") {
     const ls = s.liveSeries;
-    const p = ev.payload;
+    const p = ev.payload || {};
     const by = { ...ls.by_agent_price };
     for (const [aid, val] of Object.entries(p.by_agent_price || {})) {
       by[aid] = [...(by[aid] || []), val as number];
     }
-    set({
-      liveSeries: {
-        round: [...ls.round, ev.round],
-        mean_price: [...ls.mean_price, p.mean_price],
-        collusion_index: [...ls.collusion_index, p.collusion_index],
-        total_profit: [...ls.total_profit, p.total_profit ?? 0],
-        by_agent_price: by,
-      },
-    });
+    // accumulate every numeric headline series the market emits (mean_price, inflation, …)
+    const cols = { ...ls.cols };
+    for (const [k, val] of Object.entries(p)) {
+      if (k === "by_agent_price") continue;
+      if (typeof val === "number") cols[k] = [...(cols[k] || []), val];
+    }
+    set({ liveSeries: { round: [...ls.round, ev.round], by_agent_price: by, cols } });
   }
 }

@@ -34,7 +34,9 @@ export function WorldArena() {
   const marketParams = useStore((s) => s.marketParams);
   const running = useStore((s) => s.running);
   const liveRound = useStore((s) => s.liveRound);
-  const startRun = useStore((s) => s.startRun);
+  const liveAgents = useStore((s) => s.liveAgents);
+  const liveSeries = useStore((s) => s.liveSeries);
+  const armRun = useStore((s) => s.armRun);
 
   const k = cohorts.length;
   const cx = 318, cy = 262;
@@ -51,35 +53,53 @@ export function WorldArena() {
 
   const trackFill = `${((Math.min(liveRound, rounds) / Math.max(1, rounds)) * 100).toFixed(1)}%`;
   const marketSel = node === "market";
+  const recSel = node === "recorder";
+
+  // Recorder node content — the ACTUAL per-round record, read live from the stream.
+  // Each round logs: agent output (price/reasoning) → mechanism's objective result
+  // (price·qty·profit) → the headline series written back to the world & trace.
+  const last = (arr?: number[]) => (arr && arr.length ? arr[arr.length - 1] : undefined);
+  const fmt = (v: number | undefined, d = 2) => (v == null ? "—" : v.toFixed(d));
+  const cohortName = (id: string) => {
+    const cid = id.replace(/_\d+$/, "");
+    return cohorts.find((c) => c.id === cid)?.name || id;
+  };
+  const recRows = Object.entries(liveAgents).map(([id, a]: [string, any]) => ({
+    name: cohortName(id),
+    price: a?.realized?.price ?? a?.action?.price,
+    profit: a?.realized?.profit,
+  }));
+  const recMean = last(liveSeries.cols.mean_price);
+  const recIdx = last(liveSeries.cols.collusion_index);
+  const recHasData = liveRound > 0 && recRows.some((r) => r.price != null);
 
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", paddingTop: 58 }}>
-      {/* layer toggles */}
-      <div style={{ position: "absolute", top: 60, left: 16, zIndex: 9, display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--muted)", margin: "0 0 1px 3px" }}>Layers</span>
-        <LayerChip k="info" label="Observation" fg="#2f6f8f" bd="#9cc0d6" />
-        <LayerChip k="news" label="News / shock" fg="#bd7a2a" bd="#e0c79a" />
-      </div>
-
       <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
         <div style={{ minWidth: "100%", minHeight: "100%", width: "max-content", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px 28px", boxSizing: "border-box" }}>
-          <div style={{ position: "relative", width: 660, height: 520, flex: "none" }}>
-            <svg viewBox="0 0 660 520" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
+          <div style={{ position: "relative", width: 760, height: 520, flex: "none" }}>
+            <svg viewBox="0 0 760 520" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
               <defs>
                 <marker id="mw-ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#7a8290" /></marker>
                 <marker id="mw-arn" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#bd7a2a" /></marker>
+                <marker id="mw-arg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#1c7a4b" /></marker>
               </defs>
               <circle cx="318" cy="262" r="150" fill="none" stroke="#8aa6c4" strokeWidth="1.2" strokeDasharray="3 6" opacity={infoOp} />
-              <text x="318" y="430" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5f7794" opacity={infoOp}>Observation layer · price · macro · news</text>
               {placed.map((p, i) => (
                 <line key={"c" + i} x1="318" y1="262" x2={p.x} y2={p.y} stroke="#9aa79e" strokeWidth="1.6" />
               ))}
+              {/* drawn after the radial lines, with a bg halo so the line doesn't cut through the text */}
+              <text x="318" y="411" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5f7794" opacity={infoOp} stroke="#fbfbfa" strokeWidth={4} paintOrder="stroke">Observation layer · price · macro · news</text>
               <text x="296" y="150" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">act ↓</text>
               <text x="340" y="150" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">observe ↑</text>
               <path d="M600 70 L432 188" stroke="#bd7a2a" strokeWidth="1.4" strokeDasharray="4 5" fill="none" markerEnd="url(#mw-arn)" opacity={newsOp} />
               <text x="606" y="60" textAnchor="end" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#bd7a2a" opacity={newsOp}>News / shock</text>
-              <line x1="404" y1="262" x2="612" y2="262" stroke="#7a8290" strokeWidth="1.6" markerEnd="url(#mw-ar)" />
-              <text x="508" y="252" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">record →</text>
+              {/* lower lane: record → out to the recorder */}
+              <line x1="420" y1="262" x2="556" y2="262" stroke="#7a8290" strokeWidth="1.6" markerEnd="url(#mw-ar)" />
+              <text x="488" y="254" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11.5" fill="#5d655e">record →</text>
+              {/* upper lane: write-back arc looping the recorded state back into the world */}
+              <path d="M556 246 C522 202 446 202 414 244" fill="none" stroke="#1c7a4b" strokeWidth="1.4" strokeDasharray="4 5" markerEnd="url(#mw-arg)" opacity={0.85} />
+              <text x="485" y="192" textAnchor="middle" fontFamily="Hanken Grotesk" fontSize="11" fill="#1c7a4b">↻ write-back · next round</text>
             </svg>
 
             {/* market core */}
@@ -100,6 +120,50 @@ export function WorldArena() {
                   <span key={c} style={{ fontFamily: mono, fontSize: 10, color: "var(--indigo)", background: "var(--indigo-l)", borderRadius: 6, padding: "3px 7px" }}>{c}</span>
                 ))}
               </div>
+            </div>
+
+            {/* recorder · write-back node — sits at the end of the record→ arrow.
+                Shows the ACTUAL per-round record live; falls back to the field schema when idle. */}
+            <div
+              onClick={() => selectNode("recorder")}
+              style={{
+                position: "absolute", left: 642, top: cy, transform: "translate(-50%,-50%)", width: 162, textAlign: "left",
+                background: "#fff", borderRadius: 14, padding: "13px 13px", cursor: "pointer",
+                border: `1.5px solid ${recSel ? "var(--green)" : "#cfe0d4"}`,
+                boxShadow: recSel ? "0 12px 30px -12px rgba(28,122,75,.5)" : "0 10px 30px -16px rgba(20,30,24,.3)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--green-d)" }}>▤ Record</span>
+                <span style={{ fontFamily: mono, fontSize: 9.5, color: "var(--muted)" }}>{recHasData ? `t=${liveRound}` : "write-back"}</span>
+              </div>
+
+              {recHasData ? (
+                <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 6, fontFamily: mono, fontSize: 10, color: "var(--ink)" }}>
+                  {recRows.map((r, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+                      <span style={{ color: "var(--green-d)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                      <span style={{ flex: "none", color: "var(--muted)" }}>${fmt(r.price)} · π {fmt(r.profit, 1)}</span>
+                    </div>
+                  ))}
+                  <div style={{ borderTop: "1px dashed #d4e3d9", paddingTop: 5, display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
+                    <span>mean ${fmt(recMean)}</span>
+                    <span>idx {fmt(recIdx)}</span>
+                  </div>
+                  <div style={{ color: "var(--green-d)", fontSize: 9, marginTop: 1 }}>↻ written back → next round</div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 9, display: "flex", flexDirection: "column", gap: 5, fontFamily: mono, fontSize: 9, color: "var(--muted)", lineHeight: 1.35 }}>
+                  <span style={{ color: "var(--ink)" }}>agent output</span>
+                  <span>price · reasoning</span>
+                  <span style={{ color: "#9fc0ad" }}>↓ mechanism aggregates</span>
+                  <span style={{ color: "var(--ink)" }}>objective result</span>
+                  <span>price · qty · profit</span>
+                  <span style={{ color: "#9fc0ad" }}>↓ write back</span>
+                  <span style={{ color: "var(--ink)" }}>series → next round</span>
+                  <span>mean_price · collusion</span>
+                </div>
+              )}
             </div>
 
             {/* empty from-0 state — prompt to add cohorts */}
@@ -157,30 +221,13 @@ export function WorldArena() {
         </div>
         <span style={{ fontFamily: mono, fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>t={liveRound}</span>
         <button
-          onClick={startRun}
+          onClick={armRun}
           disabled={running || k === 0}
           style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "var(--green-d)", background: "var(--green-l)", border: "1px solid #d3e7db", padding: "7px 14px", borderRadius: 8, cursor: running || k === 0 ? "default" : "pointer", whiteSpace: "nowrap", opacity: running || k === 0 ? 0.6 : 1 }}
         >
-          {running ? "running…" : k === 0 ? "add an agent to run" : "▶ Run golden trace"}
+          {running ? "running…" : k === 0 ? "add an agent to run" : "▶ Run"}
         </button>
       </div>
-    </div>
-  );
-}
-
-function LayerChip({ k, label, fg, bd }: { k: "info" | "news"; label: string; fg: string; bd: string }) {
-  const on = useStore((s) => s.layers[k]);
-  const toggle = useStore((s) => s.toggleLayer);
-  return (
-    <div
-      onClick={() => toggle(k)}
-      style={{
-        display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, padding: "5px 10px", borderRadius: 999, cursor: "pointer",
-        background: "#fff", border: `1px solid ${on ? bd : "#e5e8e4"}`, color: on ? fg : "#a7b0a8",
-      }}
-    >
-      <span style={{ fontSize: 9 }}>●</span>
-      {label}
     </div>
   );
 }

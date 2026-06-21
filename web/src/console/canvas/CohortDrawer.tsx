@@ -26,6 +26,7 @@ export function CohortDrawer() {
   const collapse = useStore((s) => s.collapse);
   const co = cohorts.find((c) => c.id === expanded);
   if (!co) return null;
+  const spec = getMarket(mech);
   const stages = stagesFor(co, mech);
 
   return (
@@ -53,6 +54,22 @@ export function CohortDrawer() {
             <div style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--indigo)" }}>action</div>
             <div style={{ fontFamily: mono, fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>schema set by market</div>
           </div>
+        </div>
+
+        {/* system prompt — the actual text a Claude agent in this cohort receives */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 7 }}>
+            <span style={{ fontFamily: serif, fontWeight: 600, fontSize: 15, color: "var(--indigo)" }}>System prompt</span>
+            <span style={{ fontFamily: mono, fontSize: 10, color: "var(--muted)" }}>{co.policy === "claude" ? "sent to Claude each round" : "used when policy = Claude"}</span>
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 11.5, lineHeight: 1.55, color: "var(--ink)", background: "#f7f8fb", border: "1px solid var(--indigo-bd)", borderRadius: 10, padding: "11px 13px", whiteSpace: "pre-wrap", maxHeight: 150, overflowY: "auto" }}>
+            {spec.systemPrompt(co)}
+          </div>
+          {mech === "fish" && (
+            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.45 }}>
+              For this preset the prompt prefix (P0/P1/P2) <b>is</b> the entire system prompt — the persona is not sent. Cost, market history and the PLANS.txt / INSIGHTS.txt files go in the per-round user message.
+            </div>
+          )}
         </div>
       </div>
     </>

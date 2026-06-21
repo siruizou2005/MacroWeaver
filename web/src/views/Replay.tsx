@@ -1,32 +1,48 @@
 import { useEffect } from "react";
-import { useStore } from "../store";
+import { useStore, viewTrace, viewRound } from "../store";
 import { PriceChart } from "../replay/PriceChart";
 import { Transport } from "../replay/Transport";
 import { FlowStrip } from "../replay/FlowStrip";
 import { ThinkingCards } from "../replay/ThinkingCards";
+import { RunBar } from "../replay/RunBar";
+import { NewRunBody, NewRunAside } from "../replay/NewRun";
 
 const serif = "'Spectral',serif";
 
 export function Replay() {
-  const trace = useStore((s) => s.trace);
-  const traces = useStore((s) => s.traces);
-  const round = useStore((s) => s.round);
-  const loadTrace = useStore((s) => s.loadTrace);
+  const trace = useStore(viewTrace);
+  const round = useStore(viewRound);
+  const running = useStore((s) => s.running);
+  const refreshTraces = useStore((s) => s.refreshTraces);
 
-  // auto-load a trace if none is open yet (prefer the freshest; else the golden)
-  useEffect(() => {
-    if (trace) return;
-    if (traces.length) loadTrace(traces[0].id);
-    else loadTrace("golden/fish_calvano");
-  }, [trace, traces, loadTrace]);
+  // keep the replay picker fresh when the page opens
+  useEffect(() => { refreshTraces(); }, [refreshTraces]);
 
-  if (!trace) {
-    return (
-      <main style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100vh - 68px)", color: "var(--muted)", fontFamily: serif, fontSize: 20 }}>
-        Loading trace…
+  // new-run mode (the default): no trace open and not streaming → an empty scaffold of the
+  // configured world. A loaded trace ⇒ replay; a live stream ⇒ live. So empty = new run.
+  const newRun = !running && !trace;
+  const booting = running && (!trace || trace.T < 1); // run started, first round not in yet
+
+  const shell = (body: React.ReactNode, aside: React.ReactNode) => (
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 68px)" }}>
+      <RunBar />
+      <main style={{ display: "grid", gridTemplateColumns: "1fr 340px", flex: 1, minHeight: 0 }}>
+        <section style={{ display: "flex", flexDirection: "column", minWidth: 0, borderRight: "1px solid var(--border)" }}>{body}</section>
+        {aside}
       </main>
-    );
-  }
+    </div>
+  );
+  const blankAside = <aside style={{ background: "#fff", borderLeft: "1px solid var(--border)" }} />;
+
+  if (newRun) return shell(<NewRunBody />, <NewRunAside />);
+  if (booting) return shell(
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontFamily: serif, fontSize: 20 }}>Starting run…</div>,
+    blankAside,
+  );
+  if (!trace) return shell(
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontFamily: serif, fontSize: 20 }}>Loading trace…</div>,
+    blankAside,
+  );
 
   const r = Math.min(round, trace.T - 1);
   const series: any = trace.series;
@@ -55,34 +71,35 @@ export function Replay() {
     trace.market === "econagent" ? "EconAgent · Macro — CPI & inflation" :
     "CLOB — traded price vs. fair value";
 
-  return (
-    <main style={{ display: "grid", gridTemplateColumns: "1fr 340px", height: "calc(100vh - 68px)" }}>
-      <section style={{ display: "flex", flexDirection: "column", minWidth: 0, borderRight: "1px solid var(--border)" }}>
-        <div style={{ padding: "22px 30px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--green)", marginBottom: 7 }}>Golden trace · replay</div>
-            <h1 style={{ fontFamily: serif, fontWeight: 500, fontSize: 27, letterSpacing: "-.3px", margin: 0 }}>{title}</h1>
+  return shell(
+    <>
+      <div style={{ padding: "22px 30px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--green)", marginBottom: 7 }}>
+            {running ? "Live run · streaming" : "Replay"}
           </div>
-          <div style={{ display: "flex", gap: 26 }}>
-            {stats.map((st) => (
-              <div key={st.label}>
-                <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>{st.label}</div>
-                <div style={{ fontFamily: serif, fontSize: 26, fontWeight: 600, color: st.color || "var(--ink)" }}>{st.value}</div>
-              </div>
-            ))}
-          </div>
+          <h1 style={{ fontFamily: serif, fontWeight: 500, fontSize: 27, letterSpacing: "-.3px", margin: 0 }}>{title}</h1>
         </div>
+        <div style={{ display: "flex", gap: 26 }}>
+          {stats.map((st) => (
+            <div key={st.label}>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em" }}>{st.label}</div>
+              <div style={{ fontFamily: serif, fontSize: 26, fontWeight: 600, color: st.color || "var(--ink)" }}>{st.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        <div style={{ flex: 1, padding: "14px 24px 6px", minHeight: 0, display: "flex", alignItems: "center" }}>
-          <PriceChart />
-        </div>
+      <div style={{ flex: 1, padding: "14px 24px 6px", minHeight: 0, display: "flex", alignItems: "center" }}>
+        <PriceChart />
+      </div>
 
-        <Transport />
-        <div style={{ padding: "0 30px 18px", background: "#fff" }}>
-          <FlowStrip />
-        </div>
-      </section>
-      <ThinkingCards />
-    </main>
+      {/* scrubbing transport only when reviewing a finished trace; a live run is pinned to its edge */}
+      {!running && <Transport />}
+      <div style={{ padding: "0 30px 18px", background: "#fff" }}>
+        <FlowStrip />
+      </div>
+    </>,
+    <ThinkingCards />,
   );
 }

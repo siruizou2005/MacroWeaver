@@ -1,12 +1,12 @@
-import { useStore } from "../store";
+import { useStore, viewTrace, viewRound } from "../store";
 import { buildChart, CHART_W, CHART_H } from "../lib/chart";
 
 const mono = "'Spline Sans Mono',monospace";
 
 export function PriceChart() {
-  const trace = useStore((s) => s.trace);
-  const round = useStore((s) => s.round);
-  if (!trace) return null;
+  const trace = useStore(viewTrace);
+  const round = useStore(viewRound);
+  if (!trace || trace.T < 1) return null;
 
   const series = trace.series;
   const byAgent = series.by_agent_price || {};

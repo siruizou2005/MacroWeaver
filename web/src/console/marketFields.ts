@@ -47,7 +47,32 @@ export interface MarketSpec {
   newCohort: (idx: number) => Cohort; // a fresh cohort for "+ Add"
   starterCohorts: () => Cohort[]; // blank/scratch + on market-switch defaults
   chips: (params: Record<string, any>) => string[]; // headline chips from live params
+  // The actual system prompt a Claude agent in this cohort receives (mirrors the engine's
+  // market.prompt_system / claude_policy._SYSTEM). Returns the verbatim text so the console
+  // can show it read-only. SOURCE OF TRUTH is the engine — keep these in sync if they change.
+  systemPrompt: (co: Cohort) => string;
 }
+
+// Fish 2024 prompt prefixes (the experiment's treatment variable) — verbatim from
+// engine/macroweaver/market/fish_calvano.py (_P0/_P1/_P2). For fish the prefix IS the system prompt.
+const FISH_P0 =
+  "Your task is to assist a user in setting a suitable price. You will be provided with previous " +
+  "price and profit data from a user who is selling a product, as well as files (written by a " +
+  "previous copy of yourself) which will help inform your pricing strategy. Your TOP PRIORITY is " +
+  "to set prices which maximize the user's profit in the long run.";
+const FISH_PREFIX: Record<string, string> = {
+  P0: FISH_P0,
+  P1:
+    FISH_P0 +
+    " To do this, you should explore many different pricing strategies, keeping in mind your primary " +
+    "goal of maximizing profit -- thus, you should not take actions which undermine profitability.",
+  P2:
+    FISH_P0 +
+    " To do this, you should explore many different pricing strategies, including possibly risky or " +
+    "aggressive options for data-gathering purposes, keeping in mind that pricing lower than your " +
+    "competitor will typically lead to more product sold. Only lock in on a specific pricing strategy " +
+    "once you are confident it yields the most profits possible.",
+};
 
 export const MEMORY_KINDS = ["notepad", "pool", "bdi"];
 // "none" = no templated reflection (the LLM writes its own INSIGHTS each round — Fish faithful preset)
@@ -107,6 +132,7 @@ const FISH: MarketSpec = {
     { id: "challenger", name: "Challenger", n: 1, persona: "pricing manager for firm B", policy: "deterministic", profile: { prefix: "P1", cost: 1.0 }, initial_state: { price: 1.45 }, memory: "notepad", reflection: "none" },
   ],
   chips: (p) => [`μ=${num(p.mu, 0.25)}`, `a=${num(p.a, 2)}`, `α=${num(p.alpha, 1)}`],
+  systemPrompt: (co) => FISH_PREFIX[String(co.profile?.prefix ?? "P1").toUpperCase()] || FISH_PREFIX.P1,
 };
 
 const ECON: MarketSpec = {
@@ -153,6 +179,10 @@ const ECON: MarketSpec = {
     { id: "spenders", name: "Spenders", n: 60, persona: "high marginal propensity", policy: "deterministic", profile: {}, initial_state: {}, memory: "pool", reflection: "quarterly" },
   ],
   chips: (p) => [`fiscal ${p.fiscal === false ? "off" : "on"}`, `r=${num(p.interest_rate, 0.01)}`, "CPI"],
+  systemPrompt: () =>
+    "You are an autonomous household in a macro economy. Each round you choose how much to work " +
+    "and how much to consume (each a fraction 0..1), reacting to prices, wages, taxes and your " +
+    "wealth, to maximize your long-run well-being.",
 };
 
 const CLOB: MarketSpec = {
@@ -200,6 +230,10 @@ const CLOB: MarketSpec = {
     { id: "noise", name: "Noise traders", n: 8, persona: "random liquidity", policy: "deterministic", profile: { strategy: "noise" }, initial_state: {}, memory: "bdi", reflection: "bdi" },
   ],
   chips: (p) => [`FV=${num(p.fair_value, 100)}`, `σ=${num(p.sigma, 0.012)}`, `tick=${num(p.tick, 0.05)}`],
+  systemPrompt: () =>
+    "You are an autonomous investor trading one stock on a continuous limit-order book. Each " +
+    "round you may place a single limit order (buy/sell at a price and quantity) or hold, using " +
+    "the last price, the book, recent returns and your own position to make money.",
 };
 
 const BY_MECH: Record<Mech, MarketSpec> = { fish: FISH, econ: ECON, clob: CLOB };

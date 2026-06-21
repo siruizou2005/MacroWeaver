@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { SHARED_DIR } from "./config.js";
 import {
-  listPresets, getPreset, listTraces, getTrace,
+  listPresets, getPreset, listTraces, getTrace, saveTraceAs,
   listConfigs, getConfig, saveConfig, deleteConfig,
   listTemplates, getTemplate, saveTemplate, deleteTemplate,
 } from "./files.js";
@@ -20,6 +20,16 @@ router.get("/presets/:id", (req, res) => {
 });
 
 router.get("/traces", (_req, res) => res.json(listTraces()));
+// save a kept, named copy of an existing trace (replay-page "Save run")
+router.post("/traces/save", (req, res) => {
+  const { id, name } = req.body || {};
+  if (!id) return res.status(400).json({ error: "missing id" });
+  try {
+    res.json({ id: saveTraceAs(id, name) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 router.get("/traces/*", (req, res) => {
   try {
     const id = req.params[0]; // captures nested ids like "golden/fish_calvano"

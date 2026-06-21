@@ -88,7 +88,7 @@ function Toolbar() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const running = useStore((s) => s.running);
-  const startRun = useStore((s) => s.startRun);
+  const armRun = useStore((s) => s.armRun);
   const cancelRun = useStore((s) => s.cancelRun);
   const runName = useStore((s) => s.runName);
   const setRunName = useStore((s) => s.setRunName);
@@ -139,7 +139,7 @@ function Toolbar() {
           {"{ } config"}
         </button>
         <button
-          onClick={running ? cancelRun : startRun}
+          onClick={running ? cancelRun : armRun}
           disabled={!running && noCohorts}
           title={!running && noCohorts ? "Add at least one agent to run" : undefined}
           style={{ fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff", background: running ? "var(--amber)" : "var(--green)", border: "none", padding: "10px 20px", borderRadius: 9, cursor: !running && noCohorts ? "not-allowed" : "pointer", opacity: !running && noCohorts ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8 }}
